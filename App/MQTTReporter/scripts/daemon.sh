@@ -45,3 +45,78 @@ build_state_payload() {
         "$(j_num "$ram_pct")" \
         "$(j_num "$cpu_load")"
 }
+
+# Resolved at runtime by daemon_main.
+BAT_DIR=""
+MEM_PATH="/proc/meminfo"
+LOAD_PATH="/proc/loadavg"
+PID_FILE=""
+STOP=0
+
+_resolve_battery_path() {
+    if [ -n "${BATTERY_PATH:-}" ]; then
+        BAT_DIR="$BATTERY_PATH"
+    else
+        BAT_DIR="$(detect_battery_path /sys/class/power_supply)"
+    fi
+    [ -n "$BAT_DIR" ] || log_warn "no battery sysfs path detected"
+}
+
+_signal_stop() { STOP=1; }
+
+_publish_state() {
+    local payload
+    payload="$(build_state_payload "$BAT_DIR" "$MEM_PATH" "$LOAD_PATH")"
+    if ! mqtt_publish "$(state_topic "$DEVICE_ID")" "$payload" 0 false; then
+        log_warn "publish failed"
+    fi
+}
+
+_publish_availability() {
+    mqtt_publish "$(availability_topic "$DEVICE_ID")" "$1" 0 true || true
+}
+
+# daemon_main <config_path>
+daemon_main() {
+    local cfg="$1"
+    load_config "$cfg"
+    : "${INTERVAL:=30}"
+
+    DEVICE_ID="$(device_id)"
+    _resolve_battery_path
+
+    PID_FILE="${PID_FILE:-/tmp/mqttreporter.pid}"
+    echo $$ > "$PID_FILE"
+
+    trap '_signal_stop' INT TERM HUP
+
+    log_info "daemon starting device_id=$DEVICE_ID interval=${INTERVAL}s"
+    publish_discovery
+    _publish_availability "online"
+
+    while [ "$STOP" -eq 0 ]; do
+        _publish_state
+        # Sleep in 1s slices so signals interrupt promptly.
+        local i=0
+        while [ "$i" -lt "$INTERVAL" ] && [ "$STOP" -eq 0 ]; do
+            sleep 1
+            i=$((i + 1))
+        done
+    done
+
+    _publish_availability "offline"
+    rm -f "$PID_FILE"
+    log_info "daemon stopped"
+}
+
+# When executed directly, run daemon_main with default config.
+if [ "${0##*/}" = "daemon.sh" ]; then
+    APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+    # shellcheck disable=SC1091
+    . "$APP_DIR/scripts/lib.sh"
+    # shellcheck disable=SC1091
+    . "$APP_DIR/scripts/collectors.sh"
+    # shellcheck disable=SC1091
+    . "$APP_DIR/scripts/discovery.sh"
+    daemon_main "$APP_DIR/etc/mqtt.conf"
+fi
