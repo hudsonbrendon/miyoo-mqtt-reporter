@@ -1,0 +1,5 @@
+Simple mixer control 'Master',0
+  Capabilities: pvolume pswitch pswitch-joined
+  Playback channels: Mono
+  Limits: Playback 0 - 100
+  Mono: Playback 73 [73%] [on]
