@@ -1,0 +1,14 @@
+# editor
+*.swp
+.DS_Store
+.idea/
+.vscode/
+
+# test artifacts
+tests/tmp/
+tests/.broker.pid
+tests/.broker.log
+tests/.received
+
+# local config
+App/MQTTReporter/etc/mqtt.conf
