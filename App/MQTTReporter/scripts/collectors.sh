@@ -53,6 +53,21 @@ read_ram() {
     printf '%s|%s' "$used_pct" "$avail"
 }
 
+# detect_battery_path <power_supply_root>
+# Echoes path to first subdir whose `type` is "Battery", or empty.
+detect_battery_path() {
+    local root="$1"
+    [ -d "$root" ] || return 0
+    local d
+    for d in "$root"/*; do
+        [ -d "$d" ] || continue
+        if [ -r "$d/type" ] && [ "$(cat "$d/type")" = "Battery" ]; then
+            printf '%s' "$d"
+            return 0
+        fi
+    done
+}
+
 # read_cpu <loadavg_path>
 # Echoes "<load1>|<procs_running>".
 read_cpu() {

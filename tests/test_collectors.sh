@@ -65,4 +65,18 @@ testReadCpuReturnsEmptyOnMissingFile() {
     assertEquals "" "$out"
 }
 
+testDetectBatteryPathPicksDirWithTypeBattery() {
+    . "$COL"
+    out="$(detect_battery_path "$FIX/power-supply-root")"
+    assertEquals "$FIX/power-supply-root/axp20x-battery" "$out"
+}
+
+testDetectBatteryPathReturnsEmptyOnNoMatch() {
+    . "$COL"
+    tmp="$(mktemp -d)"
+    out="$(detect_battery_path "$tmp" 2>/dev/null)"
+    assertEquals "" "$out"
+    rmdir "$tmp"
+}
+
 . "$SCRIPT_DIR/shunit2"
