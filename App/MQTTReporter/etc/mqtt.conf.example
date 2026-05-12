@@ -1,0 +1,19 @@
+# MQTTReporter configuration. Copy to mqtt.conf and edit.
+
+# Broker
+MQTT_HOST=homeassistant.local
+MQTT_PORT=1883
+MQTT_USER=
+MQTT_PASS=
+
+# Publish interval in seconds
+INTERVAL=30
+
+# Override device id (default: derived from wlan0 MAC, fallback "miyoominiplus")
+# DEVICE_ID=miyoo-couch
+
+# Sysfs path for the battery. Leave blank to auto-detect under /sys/class/power_supply.
+BATTERY_PATH=
+
+# Optional: keepalive seconds passed to mosquitto_pub
+KEEPALIVE=60
