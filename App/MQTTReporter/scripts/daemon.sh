@@ -112,6 +112,9 @@ daemon_main() {
 # When executed directly, run daemon_main with default config.
 if [ "${0##*/}" = "daemon.sh" ]; then
     APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+    PATH="$APP_DIR/bin:$PATH"
+    LD_LIBRARY_PATH="$APP_DIR/lib:${LD_LIBRARY_PATH:-}"
+    export PATH LD_LIBRARY_PATH
     # shellcheck disable=SC1091
     . "$APP_DIR/scripts/lib.sh"
     # shellcheck disable=SC1091

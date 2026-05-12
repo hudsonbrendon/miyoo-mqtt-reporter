@@ -1,0 +1,29 @@
+mosquitto_pub
+=============
+This file is a placeholder. The real `mosquitto_pub` ARMv7 binary must be
+installed before the daemon can publish to MQTT.
+
+Three ways to acquire it:
+
+1. From an existing OnionOS plugin that bundles mosquitto-clients:
+   Many community plugins (e.g. *_addon installers) include a cross-compiled
+   mosquitto-clients. Extract `mosquitto_pub` and any required libmosquitto*.so
+   shared libs, drop them into this directory (binary here, .so files into ../lib/).
+
+2. From Eclipse Mosquitto sources via OnionUI/Onion buildroot:
+   git clone https://github.com/OnionUI/Onion.git
+   cd Onion/third-party
+   # Follow buildroot README to configure ARM target + mosquitto package.
+   # Output: output/target/usr/bin/mosquitto_pub
+
+3. Via Debian/Ubuntu armhf cross-toolchain:
+   apt-get install gcc-arm-linux-gnueabihf
+   apt-get download mosquitto-clients:armhf
+   # Extract from .deb: dpkg-deb -x ./mosquitto-clients_*.deb extracted/
+   # Copy extracted/usr/bin/mosquitto_pub here, and any
+   # extracted/usr/lib/arm-linux-gnueabihf/libmosquitto.so* into ../lib/
+
+After installing:
+- chmod +x mosquitto_pub
+- Verify: `file mosquitto_pub` should report "ELF 32-bit LSB executable, ARM"
+- Update this file with the source and version actually used.

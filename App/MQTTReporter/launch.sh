@@ -3,6 +3,9 @@
 set -u
 
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+PATH="$APP_DIR/bin:$PATH"
+LD_LIBRARY_PATH="$APP_DIR/lib:${LD_LIBRARY_PATH:-}"
+export PATH LD_LIBRARY_PATH
 . "$APP_DIR/scripts/toggle.sh"
 
 INFO_PANEL="/mnt/SDCARD/.tmp_update/bin/infoPanel"

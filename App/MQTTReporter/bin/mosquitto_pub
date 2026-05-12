@@ -1,0 +1,4 @@
+#!/bin/sh
+echo "mosquitto_pub: placeholder binary — vendored ARMv7 binary missing." >&2
+echo "See bin/SOURCE.txt for installation instructions." >&2
+exit 127
