@@ -25,4 +25,16 @@ testReadBatteryReturnsEmptyWhenPathMissing() {
     assertEquals "" "$out"
 }
 
+testParseVolumeExtractsPercent() {
+    . "$COL"
+    out="$(parse_volume_from < "$FIX/amixer-master.txt")"
+    assertEquals "73" "$out"
+}
+
+testParseVolumeReturnsEmptyOnGarbage() {
+    . "$COL"
+    out="$(printf 'no match here\n' | parse_volume_from)"
+    assertEquals "" "$out"
+}
+
 . "$SCRIPT_DIR/shunit2"
