@@ -16,16 +16,23 @@ log_error() { _log ERROR "$@"; }
 # load_config <path>
 # Reads KEY=VALUE lines, ignoring blanks and lines starting with #.
 # Exports each KEY into the current shell.
+#
+# Security: . (source) evaluates shell expressions in values. Caller must
+# ensure the config path is trusted (local SD card, owner-controlled).
 load_config() {
-    cfg="$1"
+    local cfg="$1"
+    local tmp rc
     if [ ! -r "$cfg" ]; then
         log_error "config file not readable: $cfg"
         return 1
     fi
-    # Strip comments + blanks, then source.
     tmp="$(mktemp)"
     grep -vE '^[[:space:]]*(#|$)' "$cfg" > "$tmp"
+    set -a
     # shellcheck disable=SC1090
     . "$tmp"
+    rc=$?
+    set +a
     rm -f "$tmp"
+    return "$rc"
 }
