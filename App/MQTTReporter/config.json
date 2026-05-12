@@ -1,0 +1,7 @@
+{
+    "label": "MQTT Reporter",
+    "icon": "icon.png",
+    "iconsel": "icon.png",
+    "launch": "launch.sh",
+    "description": "Publishes Miyoo system metrics to Home Assistant via MQTT."
+}
