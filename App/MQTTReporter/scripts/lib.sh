@@ -36,3 +36,31 @@ load_config() {
     rm -f "$tmp"
     return "$rc"
 }
+
+# mqtt_publish <topic> <payload> <qos> <retain:true|false>
+# Requires env: MQTT_HOST, MQTT_PORT. Optional: MQTT_USER, MQTT_PASS, KEEPALIVE.
+mqtt_publish() {
+    local topic="$1"
+    local payload="$2"
+    local qos="${3:-0}"
+    local retain="${4:-false}"
+
+    : "${MQTT_HOST:?MQTT_HOST not set}"
+    : "${MQTT_PORT:?MQTT_PORT not set}"
+
+    set -- -h "$MQTT_HOST" -p "$MQTT_PORT" -q "$qos" -t "$topic" -m "$payload"
+
+    if [ -n "${MQTT_USER:-}" ]; then
+        set -- "$@" -u "$MQTT_USER" -P "${MQTT_PASS:-}"
+    fi
+
+    if [ "$retain" = "true" ]; then
+        set -- "$@" -r
+    fi
+
+    if [ -n "${KEEPALIVE:-}" ]; then
+        set -- "$@" -k "$KEEPALIVE"
+    fi
+
+    mosquitto_pub "$@"
+}

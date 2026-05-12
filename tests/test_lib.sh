@@ -69,4 +69,57 @@ testLoadConfigFailsOnMissingFile() {
     assertNotEquals 0 "$rc"
 }
 
+setUpMqttStub() {
+    STUB_DIR="$(mktemp -d)"
+    STUB_LOG="$STUB_DIR/args.log"
+    cat > "$STUB_DIR/mosquitto_pub" <<EOF
+#!/bin/sh
+printf '%s\n' "\$*" >> "$STUB_LOG"
+EOF
+    chmod +x "$STUB_DIR/mosquitto_pub"
+    PATH="$STUB_DIR:$PATH"
+    export PATH STUB_DIR STUB_LOG
+}
+
+tearDownMqttStub() {
+    rm -rf "$STUB_DIR"
+}
+
+testMqttPublishCallsMosquittoPubWithBrokerCreds() {
+    setUpMqttStub
+    . "$LIB"
+    MQTT_HOST=test.lan MQTT_PORT=1883 MQTT_USER=u MQTT_PASS=p \
+        mqtt_publish "miyoo/x/state" '{"a":1}' 0 false
+    args="$(cat "$STUB_LOG")"
+    assertContains "$args" "-h test.lan"
+    assertContains "$args" "-p 1883"
+    assertContains "$args" "-u u"
+    assertContains "$args" "-P p"
+    assertContains "$args" "-t miyoo/x/state"
+    assertContains "$args" '-m {"a":1}'
+    tearDownMqttStub
+}
+
+testMqttPublishAddsRetainFlagWhenRequested() {
+    setUpMqttStub
+    . "$LIB"
+    MQTT_HOST=h MQTT_PORT=1883 MQTT_USER='' MQTT_PASS='' \
+        mqtt_publish "t" "m" 1 true
+    args="$(cat "$STUB_LOG")"
+    assertContains "$args" "-r"
+    assertContains "$args" "-q 1"
+    tearDownMqttStub
+}
+
+testMqttPublishOmitsAuthWhenUserEmpty() {
+    setUpMqttStub
+    . "$LIB"
+    MQTT_HOST=h MQTT_PORT=1883 MQTT_USER='' MQTT_PASS='' \
+        mqtt_publish "t" "m" 0 false
+    args="$(cat "$STUB_LOG")"
+    assertNotContains "$args" "-u"
+    assertNotContains "$args" "-P"
+    tearDownMqttStub
+}
+
 . "$SCRIPT_DIR/shunit2"
