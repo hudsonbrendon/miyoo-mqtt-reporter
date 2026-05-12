@@ -52,3 +52,14 @@ read_ram() {
         'BEGIN { printf "%d", (t-a)*100/t }')"
     printf '%s|%s' "$used_pct" "$avail"
 }
+
+# read_cpu <loadavg_path>
+# Echoes "<load1>|<procs_running>".
+read_cpu() {
+    local f="$1"
+    [ -r "$f" ] || return 0
+    awk '{
+        split($4, a, "/")
+        printf "%s|%s", $1, a[1]
+    }' "$f"
+}

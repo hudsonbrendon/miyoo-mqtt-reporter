@@ -51,4 +51,18 @@ testReadRamReturnsEmptyOnMissingFile() {
     assertEquals "" "$out"
 }
 
+testReadCpuReturnsLoad1AndProcsRunning() {
+    . "$COL"
+    out="$(read_cpu "$FIX/proc-loadavg")"
+    # loadavg fixture: "0.42 0.31 0.18 2/95 1234"
+    # format: "<load1>|<procs_running>"
+    assertEquals "0.42|2" "$out"
+}
+
+testReadCpuReturnsEmptyOnMissingFile() {
+    . "$COL"
+    out="$(read_cpu /no/such/file 2>/dev/null)"
+    assertEquals "" "$out"
+}
+
 . "$SCRIPT_DIR/shunit2"
