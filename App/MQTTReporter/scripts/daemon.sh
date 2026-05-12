@@ -79,7 +79,7 @@ _publish_availability() {
 # daemon_main <config_path>
 daemon_main() {
     local cfg="$1"
-    load_config "$cfg"
+    load_config "$cfg" || return 1
     : "${INTERVAL:=30}"
 
     DEVICE_ID="$(device_id)"
