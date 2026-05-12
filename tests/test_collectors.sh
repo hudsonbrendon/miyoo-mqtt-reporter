@@ -37,4 +37,18 @@ testParseVolumeReturnsEmptyOnGarbage() {
     assertEquals "" "$out"
 }
 
+testReadRamReturnsUsedPercentAndAvailableKb() {
+    . "$COL"
+    out="$(read_ram "$FIX/proc-meminfo")"
+    # format: "<used_percent>|<available_kb>"
+    # MemTotal=257784, MemAvailable=124880 -> used%=51 (round)
+    assertEquals "51|124880" "$out"
+}
+
+testReadRamReturnsEmptyOnMissingFile() {
+    . "$COL"
+    out="$(read_ram /no/such/file 2>/dev/null)"
+    assertEquals "" "$out"
+}
+
 . "$SCRIPT_DIR/shunit2"

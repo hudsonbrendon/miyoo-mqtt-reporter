@@ -35,3 +35,20 @@ read_volume() {
         amixer sget Master 2>/dev/null | parse_volume_from
     fi
 }
+
+# read_ram <meminfo_path>
+# Echoes "<used_percent>|<available_kb>".
+read_ram() {
+    local f="$1"
+    [ -r "$f" ] || return 0
+    local total
+    local avail
+    local used_pct
+    total="$(awk '/^MemTotal:/     { print $2; exit }' "$f")"
+    avail="$(awk '/^MemAvailable:/ { print $2; exit }' "$f")"
+    [ -n "$total" ] && [ -n "$avail" ] || return 0
+    # Truncate used%
+    used_pct="$(awk -v t="$total" -v a="$avail" \
+        'BEGIN { printf "%d", (t-a)*100/t }')"
+    printf '%s|%s' "$used_pct" "$avail"
+}
