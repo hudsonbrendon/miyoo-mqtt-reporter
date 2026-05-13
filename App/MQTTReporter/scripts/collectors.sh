@@ -317,12 +317,14 @@ scale_temp() {
 # read_temperature_miyoo
 # Miyoo Mini Plus is Sigmastar SSD202D (NOT Allwinner V3s — `/proc/cpuinfo`
 # says "SStar Soc"). The SoC exposes its temperature at
-# `/sys/devices/system/cpu/cpufreq/temp_out`. The unit varies by kernel
-# build — scale_temp auto-detects millicelsius vs direct °C.
+# `/sys/devices/system/cpu/cpufreq/temp_out` as the literal string `Temp=NN`
+# (NN already in °C). Strip the prefix, then scale_temp validates + handles
+# other kernels that emit raw millicelsius.
 read_temperature_miyoo() {
     local f=/sys/devices/system/cpu/cpufreq/temp_out
     [ -r "$f" ] || return 0
-    local v
-    v="$(head -1 "$f" 2>/dev/null)"
+    local raw v
+    raw="$(head -1 "$f" 2>/dev/null)"
+    v="${raw#Temp=}"
     scale_temp "$v"
 }

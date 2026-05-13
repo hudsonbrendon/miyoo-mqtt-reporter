@@ -210,4 +210,22 @@ testScaleTempAllowsNegative() {
     assertEquals "-5" "$(scale_temp -5)"
 }
 
+testScaleTempRejectsSigmastarPrefix() {
+    . "$COL"
+    # scale_temp is strict — `Temp=53` must be pre-stripped before calling it.
+    # This test pins that contract so read_temperature_miyoo stays honest.
+    out="$(scale_temp 'Temp=53' 2>/dev/null)"
+    assertEquals "" "$out"
+}
+
+testStripTempPrefixIsPosixSafe() {
+    . "$COL"
+    # read_temperature_miyoo uses ${raw#Temp=} — verify the shell does what
+    # we expect for the two known Sigmastar formats.
+    raw='Temp=53'
+    assertEquals "53" "${raw#Temp=}"
+    raw='53000'
+    assertEquals "53000" "${raw#Temp=}"
+}
+
 . "$SCRIPT_DIR/shunit2"
