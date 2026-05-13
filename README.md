@@ -33,23 +33,38 @@ Assistant auto-creates five entities via **MQTT Discovery** — no
 
 | Entity                 | Source on Miyoo                                          | HA type         |
 | ---------------------- | -------------------------------------------------------- | --------------- |
-| **Battery %**          | `/tmp/percBat` (written by Onion's `batmon`)             | `sensor`        |
-| **Battery voltage**    | `axp` regs `78h:79h` × 1.1 mV                            | `sensor`        |
-| **Battery current**    | `axp` regs `7Ah-7Dh` (charge − discharge, 0.5 mA/LSB)    | `sensor`        |
-| **Charging on/off**    | `axp 0` register, bit `0x4`                              | `binary_sensor` |
-| **Volume %**           | `/tmp/live_vol` (real-time via `vol-watcher.sh`)         | `sensor`        |
-| **Brightness %**       | `system.json` key `brightness` (0-10 scaled to %)        | `sensor`        |
-| **RAM used %**         | `/proc/meminfo` (MemTotal vs MemAvailable)               | `sensor`        |
-| **CPU load (1 min)**   | `/proc/loadavg`                                          | `sensor`        |
-| **CPU frequency**      | `/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq`  | `sensor`        |
-| **Temperature**        | `/sys/class/thermal/thermal_zone0/temp`                  | `sensor`        |
-| **Uptime**             | `/proc/uptime`                                           | `sensor`        |
-| **SD free space**      | `df -k /mnt/SDCARD`                                      | `sensor`        |
-| **WiFi RSSI**          | `iw dev wlan0 link`                                      | `sensor`        |
-| **WiFi SSID**          | `iw dev wlan0 link`                                      | `sensor`        |
-| **IP address**         | `ip addr show wlan0`                                     | `sensor`        |
-| **Running game**       | `/tmp/cmd_to_run.sh` (parsed retroarch cmdline)          | `sensor`        |
-| **Emulator core**      | `/tmp/cmd_to_run.sh` (e.g. `mgba`, `snes9x`)             | `sensor`        |
+**32 entities** in total. The daemon publishes a single JSON state payload
+every `INTERVAL` seconds (default 10) and HA Discovery maps fields to entities.
+
+| Entity                 | Source                                                    | HA type         |
+| ---------------------- | --------------------------------------------------------- | --------------- |
+| **Battery %**          | `/tmp/percBat` (written by Onion's `batmon`)              | `sensor`        |
+| **Battery voltage**    | `axp` regs `78h:79h` × 1.1 mV                             | `sensor`        |
+| **Battery current**    | `axp` regs `7Ah-7Dh` (drain − charge, 0.5 mA/LSB; positive = discharging) | `sensor`        |
+| **Charging on/off**    | `axp 0` register, bit `0x4`                               | `binary_sensor` |
+| **Power source**       | `axp 0` bits 7/5 → `ac` / `usb` / `ac+usb` / `none`       | `sensor`        |
+| **Volume %**           | `/tmp/live_vol` (real-time via `vol-watcher.sh`)          | `sensor`        |
+| **Mute**               | `system.json` `mute` (stale — see Quirks)                 | `binary_sensor` |
+| **Brightness %**       | `system.json` `brightness` 0-10 scaled to %  (stale)      | `sensor`        |
+| **RAM used %**         | `/proc/meminfo` (MemTotal vs MemAvailable)                | `sensor`        |
+| **Swap used (kB)**     | `/proc/meminfo` SwapTotal − SwapFree                      | `sensor`        |
+| **CPU load (1/5/15)**  | `/proc/loadavg` fields 1, 2, 3                            | 3× `sensor`     |
+| **CPU frequency**      | `/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq`   | `sensor`        |
+| **CPU min/max freq**   | `scaling_min_freq` / `scaling_max_freq` (kernel-set)      | 2× `sensor`     |
+| **CPU governor**       | `scaling_governor` (e.g. `ondemand`)                      | `sensor`        |
+| **Temperature**        | `/sys/devices/system/cpu/cpufreq/temp_out` (`Temp=NN`)    | `sensor`        |
+| **Throttle hi/lo**     | `temp_adjust_threshold_hi` / `_lo` (Sigmastar)            | 2× `sensor`     |
+| **Last Boot**          | `/proc/uptime` → HA renders "X min ago" (timestamp class) | `sensor`        |
+| **SD free space (MB)** | `df -k /mnt/SDCARD`                                       | `sensor`        |
+| **Kernel**             | `uname -r`                                                | `sensor`        |
+| **WiFi RSSI / SSID**   | `iw dev wlan0 link`                                       | 2× `sensor`     |
+| **WiFi bitrate**       | `iw dev wlan0 link` tx bitrate (Mbit/s)                   | `sensor`        |
+| **WiFi MAC**           | `/sys/class/net/wlan0/address`                            | `sensor`        |
+| **IP address**         | `ip addr show wlan0`                                      | `sensor`        |
+| **NTP synced**         | `/tmp/ntp_synced` flag-file presence                      | `binary_sensor` |
+| **Theme**              | basename of `theme` path in `system.json` (stale)         | `sensor`        |
+| **Running game**       | `/mnt/SDCARD/.tmp_update/cmd_to_run.sh` (parsed)          | `sensor`        |
+| **Emulator core**      | same file — either `<core>_libretro.so` or `Emu/<DIR>/`   | `sensor`        |
 
 ```
                     ┌─────────────────────────────────────────┐
@@ -154,17 +169,28 @@ is **not committed** to git (`.gitignore` excludes it).
 | ----------------------------------------------------------- | -------- | ---------------------------------------------------------- |
 | `miyoo/<device_id>/state`                                   | no       | full JSON — see below                                      |
 | `miyoo/<device_id>/availability`                            | yes      | `online` / `offline`                                       |
-| `homeassistant/sensor/<device_id>_<obj>/config` × 16        | yes      | HA Discovery configs (one per sensor)                      |
-| `homeassistant/binary_sensor/<device_id>_charging/config`   | yes      | HA Discovery config                                        |
+| `homeassistant/sensor/<device_id>_<obj>/config` × 29        | yes      | HA Discovery configs (one per sensor)                      |
+| `homeassistant/binary_sensor/<device_id>_<obj>/config` × 3  | yes      | charging / mute / ntp_synced                               |
 
 State payload format (single JSON object per publish):
 
 ```json
 {
-  "battery": 90, "charging": "ON", "volume": 35, "ram": 34, "cpu": 4.72,
-  "uptime": 1234, "temperature": 45, "cpu_freq": 1200, "sd_free": 42848,
-  "brightness": 70, "vbat": 4170, "ibat": -380,
-  "wifi_rssi": -57, "wifi_ssid": "MinhaWiFi", "ip": "192.168.31.123",
+  "battery": 36, "charging": "OFF", "charging_source": "none",
+  "volume": 35, "mute": "OFF", "brightness": 100,
+  "ram": 29, "swap_used": 0,
+  "cpu": 1.55, "cpu_load5": 0.38, "cpu_load15": 0.13,
+  "cpu_freq": 800, "cpu_min_freq": 400, "cpu_max_freq": 1200,
+  "cpu_governor": "ondemand",
+  "temperature": 49, "temp_throttle_hi": 60, "temp_throttle_lo": 40,
+  "uptime": 40,
+  "sd_free": 3753,
+  "vbat": 3687, "ibat": 500,
+  "wifi_rssi": -53, "wifi_ssid": "CASA_396_2G", "wifi_bitrate": 72,
+  "wifi_mac": "c8:fe:0f:87:d6:a7", "ip": "192.168.31.123",
+  "ntp_synced": "ON",
+  "kernel": "4.9.84",
+  "theme": "Onion Boy DX by PixelShift",
   "core": "mgba", "game": "Pokemon FireRed"
 }
 ```
@@ -217,29 +243,48 @@ content), and the dynamic loader chokes with `invalid ELF header`.
 copy time. If you build the libs manually, use real file copies
 (`cp libmosquitto.so.2.x.y libmosquitto.so.1`), never `ln -s`.
 
+### Hardware: Sigmastar SSD202D, NOT Allwinner V3s
+
+`/proc/cpuinfo` reports `Hardware: SStar Soc`. Many community docs claim
+the Mini Plus uses Allwinner V3s — wrong. Real chip:
+
+- **SoC:** Sigmastar SSD202D (dual-core Cortex-A7)
+- **PMU:** AXP223 over I²C bus 1 addr 0x34, accessed via Onion's `axp <reg>`
+- **Audio:** custom kernel module — no `/sys/class/sound/<...>/mixer`, no `amixer`
+- **Display:** Sigmastar custom — no `/sys/class/backlight`, no `/sys/class/disp`
+- **Temp sensor:** SoC die at `/sys/devices/system/cpu/cpufreq/temp_out`,
+  format `Temp=NN` (NN in °C directly). The AXP223 die-temp regs `5Eh:5Fh`
+  exist but the temp ADC is not enabled in `axp 82h` → always 0.
+
 ### No `/sys/class/power_supply` on Mini Plus
 
 The Mini Plus exposes its PMU through the `axp` userspace binary, not sysfs:
 
 - Battery percent → `cat /tmp/percBat` (Onion's `batmon` daemon writes here)
 - Charging flag → `axp 0` register, bit `0x4` set = charging
+- Charging source → `axp 0` bit `0x80` (ACIN) / bit `0x20` (VBUS)
+- Battery voltage → `axp 78:79` × 1.1 mV
+- Battery current → `axp 7A:7B` (charge) − `axp 7C:7D` (drain), × 0.5 mA/LSB
 
-`read_battery_miyoo` in `collectors.sh` handles both. The generic
-`read_battery` from sysfs is kept for tests + portability to other devices.
+`read_battery_miyoo` and friends in `collectors.sh` handle these. Generic
+sysfs readers stay for tests + portability to other devices.
 
 ### Volume isn't persisted in real-time
 
-OnionOS only writes `system.json` (where `vol` and `mute` live) on certain
-events — power-off, returning to the home menu, hibernate. Pressing volume
-keys mid-game does NOT update the JSON.
+OnionOS only writes `system.json` (where `vol`, `mute`, `brightness`, `theme`
+live) on certain events — power-off, returning to the home menu, hibernate.
+Pressing volume keys mid-game does NOT update the JSON.
 
-**Solution:** `vol-watcher.sh` runs alongside Onion's `keymon`, reads
-`/dev/input/event0` in parallel (both readers get the same event stream), and
-tracks each `KEY_VOLUMEUP` (code 115) / `KEY_VOLUMEDOWN` (code 114) press into
-`/tmp/live_vol`. `read_volume_miyoo` prefers `/tmp/live_vol`.
+**Solution for volume:** `vol-watcher.sh` runs alongside Onion's `keymon`,
+reads `/dev/input/event0` in parallel (both readers get the same event
+stream), and tracks each `KEY_VOLUMEUP` (code 115) / `KEY_VOLUMEDOWN`
+(code 114) press into `/tmp/live_vol`. `read_volume_miyoo` prefers
+`/tmp/live_vol`.
 
-Mute state still comes from the (stale) `system.json` — there is no hardware
-mute key on the Mini Plus.
+**Same staleness, no workaround:** `mute`, `brightness`, and `theme` all
+read from `system.json`. They only update after the user returns to MainUI
+(triggers a save). No hardware mute key. No backlight sysfs file. No theme
+IPC. Documented as a known limitation.
 
 ### No mDNS resolver
 

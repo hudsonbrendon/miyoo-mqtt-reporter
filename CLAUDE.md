@@ -99,19 +99,32 @@ State and control:
 
 ## Hardware quirks that drive the code
 
-The `_miyoo`-suffixed collectors exist because OnionOS / Miyoo Mini Plus
-diverge from generic Linux in ways that matter:
+The Miyoo Mini Plus is **Sigmastar SSD202D** (dual Cortex-A7), NOT Allwinner V3s
+as community docs sometimes claim. `/proc/cpuinfo` confirms `Hardware: SStar Soc`.
+The `_miyoo`-suffixed collectors exist because this SoC + OnionOS diverge from
+generic Linux in ways that matter:
 
 | Concern | Generic Linux | Miyoo Mini Plus |
 | --- | --- | --- |
-| Battery % | `/sys/class/power_supply/<bat>/capacity` | `/tmp/percBat` (written by Onion's `batmon`) |
+| Battery % | `/sys/class/power_supply/<bat>/capacity` | `/tmp/percBat` (Onion's `batmon`) |
 | Charging | `/sys/.../status` reads `Charging` | `axp 0` register, bit `0x4` |
-| Volume   | `amixer sget Master` (`amixer` is absent) | `/dev/input/event0` press counter → `/tmp/live_vol` (mute from `system.json`) |
+| Power source | (varies) | `axp 0` bit `0x80` ACIN / bit `0x20` VBUS |
+| Battery voltage | (varies) | `axp 78h:79h` × 1.1 mV |
+| Battery current | (varies) | `axp 7A:7B` (charge) − `axp 7C:7D` (drain), 0.5 mA/LSB |
+| Temperature | `/sys/class/thermal/thermal_zone*/temp` | `/sys/devices/system/cpu/cpufreq/temp_out`, format `Temp=NN` (the AXP die-temp regs 5Eh:5Fh exist but the ADC is not enabled) |
+| Volume | `amixer sget Master` (`amixer` is absent) | `/dev/input/event0` press counter → `/tmp/live_vol` |
+| Brightness / mute / theme | live IPC | only `system.json`, only persisted on MainUI save events (stale) |
 | Boot hook | many shapes | `.tmp_update/startup/*.sh` only (NOT `runtime.sh.user`) |
 | Filesystem | usually ext4 | FAT32 — symlinks DO NOT survive |
 | libc | distro-current | parasyte caps at glibc 2.28 — Bookworm binaries fail with `GLIBC_2.34 not found` |
 | DNS | nsswitch + mDNS | no mDNS — broker must be referenced by IP |
 | `DEVICE_ID` env | unset | pre-exported as `354` by OnionOS — config must pin a real id |
+
+The `cmd_to_run.sh` file (which carries the currently-launched ROM) lives at
+`/mnt/SDCARD/.tmp_update/cmd_to_run.sh` and uses **one of two formats**:
+either the RetroArch invocation (`retroarch -L <path>/<core>_libretro.so "<rom>"`)
+or Onion's per-emulator launcher (`LD_PRELOAD=... "/mnt/SDCARD/Emu/<CORE>/launch.sh" "<rom>"`).
+`parse_onion_cmd` handles both.
 
 See [README.md](./README.md#quirks) for the full list with workarounds. Adding
 new collectors for hardware-specific data should follow the same pattern: a
