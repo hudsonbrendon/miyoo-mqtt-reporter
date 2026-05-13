@@ -33,7 +33,7 @@ Assistant auto-creates five entities via **MQTT Discovery** — no
 
 | Entity                 | Source on Miyoo                                          | HA type         |
 | ---------------------- | -------------------------------------------------------- | --------------- |
-**32 entities** in total. The daemon publishes a single JSON state payload
+**51 entities** in total. The daemon publishes a single JSON state payload
 every `INTERVAL` seconds (default 10) and HA Discovery maps fields to entities.
 
 | Entity                 | Source                                                    | HA type         |
@@ -65,6 +65,22 @@ every `INTERVAL` seconds (default 10) and HA Discovery maps fields to entities.
 | **Theme**              | basename of `theme` path in `system.json` (stale)         | `sensor`        |
 | **Running game**       | `/mnt/SDCARD/.tmp_update/cmd_to_run.sh` (parsed)          | `sensor`        |
 | **Emulator core**      | same file — either `<core>_libretro.so` or `Emu/<DIR>/`   | `sensor`        |
+| **Mode**               | `cmd_to_run.sh` + process scan → `game` / `mainui` / `switcher` / `apps` / `advmenu` / `drastic` / `launching` / `unknown` | `sensor` |
+| **Playtime total (h)** | sqlite3 `play_activity` aggregate (sessions > 60 s)       | `sensor`        |
+| **Playtime today (min)** | sqlite3 filtered to localtime "start of day"            | `sensor`        |
+| **Most played game**   | sqlite3 ORDER BY SUM(play_time) DESC LIMIT 1              | `sensor`        |
+| **Last played game**   | sqlite3 ORDER BY created_at DESC LIMIT 1                  | `sensor`        |
+| **Game count**         | sqlite3 COUNT(DISTINCT rom_id)                            | `sensor`        |
+| **BGM volume**         | `system.json` `bgmvol` 0-20 → %                           | `sensor`        |
+| **Hibernate setting**  | `system.json` `hibernate` (min)                           | `sensor`        |
+| **Language**           | `system.json` `language` (e.g. `pt-BR.lang`)              | `sensor`        |
+| **Hue/Sat/Contrast/Lum**| `system.json` 1-20 each                                  | 4× `sensor`     |
+| **Blue light filter**  | `/tmp/.blfOn` presence                                    | `binary_sensor` |
+| **BGM mute**           | `/tmp/.bgmMute` presence                                  | `binary_sensor` |
+| **Autostart enabled**  | `!/tmp/.noAutoStart`                                      | `binary_sensor` |
+| **Battery warning**    | `!/tmp/.noBatteryWarning`                                 | `binary_sensor` |
+| **CPU clock hotkey**   | `/tmp/.cpuClockHotkey` presence                           | `binary_sensor` |
+| **Audio fix**          | `system.json` `audiofix` (1 = on)                         | `binary_sensor` |
 
 ```
                     ┌─────────────────────────────────────────┐
@@ -169,15 +185,16 @@ is **not committed** to git (`.gitignore` excludes it).
 | ----------------------------------------------------------- | -------- | ---------------------------------------------------------- |
 | `miyoo/<device_id>/state`                                   | no       | full JSON — see below                                      |
 | `miyoo/<device_id>/availability`                            | yes      | `online` / `offline`                                       |
-| `homeassistant/sensor/<device_id>_<obj>/config` × 29        | yes      | HA Discovery configs (one per sensor)                      |
-| `homeassistant/binary_sensor/<device_id>_<obj>/config` × 3  | yes      | charging / mute / ntp_synced                               |
+| `homeassistant/sensor/<device_id>_<obj>/config` × 42        | yes      | HA Discovery configs (one per sensor)                      |
+| `homeassistant/binary_sensor/<device_id>_<obj>/config` × 9  | yes      | binary entities (charging, mute, ntp, blue_light, ...)     |
 
-State payload format (single JSON object per publish):
+State payload format (single JSON object per publish, abbreviated):
 
 ```json
 {
   "battery": 36, "charging": "OFF", "charging_source": "none",
-  "volume": 35, "mute": "OFF", "brightness": 100,
+  "volume": 35, "mute": "OFF", "bgm_volume": 75, "bgm_mute": "OFF",
+  "brightness": 100, "hue": 10, "saturation": 10, "contrast": 10, "lumination": 10,
   "ram": 29, "swap_used": 0,
   "cpu": 1.55, "cpu_load5": 0.38, "cpu_load15": 0.13,
   "cpu_freq": 800, "cpu_min_freq": 400, "cpu_max_freq": 1200,
@@ -189,9 +206,15 @@ State payload format (single JSON object per publish):
   "wifi_rssi": -53, "wifi_ssid": "CASA_396_2G", "wifi_bitrate": 72,
   "wifi_mac": "c8:fe:0f:87:d6:a7", "ip": "192.168.31.123",
   "ntp_synced": "ON",
-  "kernel": "4.9.84",
+  "kernel": "4.9.84", "language": "pt-BR.lang",
   "theme": "Onion Boy DX by PixelShift",
-  "core": "mgba", "game": "Pokemon FireRed"
+  "audiofix": 1,
+  "hibernate_min": 15,
+  "blue_light": "OFF", "autostart": "ON", "battery_warning": "ON", "cpuclock_hotkey": "OFF",
+  "mode": "game",
+  "core": "mgba", "game": "Pokemon FireRed", "last_played": "Pokemon FireRed",
+  "most_played": "Final Fantasy VII", "game_count": 23,
+  "playtime_total_hours": "42.7", "playtime_today_min": 35
 }
 ```
 

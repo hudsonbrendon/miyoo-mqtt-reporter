@@ -126,6 +126,33 @@ either the RetroArch invocation (`retroarch -L <path>/<core>_libretro.so "<rom>"
 or Onion's per-emulator launcher (`LD_PRELOAD=... "/mnt/SDCARD/Emu/<CORE>/launch.sh" "<rom>"`).
 `parse_onion_cmd` handles both.
 
+## Onion state surfaces the daemon reads
+
+Beyond the hardware concerns above, several useful state lives only in
+Onion's userspace — these inform mode detection, playtime tracking, and
+the various flag-files surfaced as binary sensors:
+
+- `/mnt/SDCARD/Saves/CurrentProfile/play_activity/play_activity_db.sqlite`
+  (new path) or `…/saves/playActivity.db` (legacy) — the SQLite database
+  Onion populates with each game session. Schema:
+  `rom(id, type, name, file_path, image_path)` +
+  `play_activity(rom_id, play_time, created_at)`. Sessions ≤ 60 seconds are
+  filtered out by convention (mirrors Onion's own queries).
+- `/tmp/.blfOn`, `/tmp/.bgmMute`, `/tmp/.noAutoStart`, `/tmp/.noBatteryWarning`,
+  `/tmp/.cpuClockHotkey` — presence-based Onion flag-files. The `_flag_present_on`
+  and `_flag_absent_on` helpers in `collectors.sh` convert presence to ON/OFF
+  for HA binary sensors. Inverted readers (autostart, battery_warning) flip
+  the polarity.
+- `/tmp/percBat`, `/tmp/ntp_synced`, `/tmp/state_changed`, `/tmp/.axp_result`,
+  `/tmp/screen_resolution` — runtime state Onion daemons write. `batmon`
+  owns percBat; MainUI owns the rest.
+- `/mnt/SDCARD/.tmp_update/.runGameSwitcher` — flag indicating the
+  GameSwitcher is active (used by `detect_current_mode_miyoo`).
+- Mode detection mirrors `src/common/system/state.h::check_isXxx` from
+  the Onion repo: a `/proc/<pid>/comm` scan combined with the `cmd_to_run.sh`
+  presence test. The `proc_exists` helper does the scan in pure shell so the
+  function stays tested by sourcing alone.
+
 See [README.md](./README.md#quirks) for the full list with workarounds. Adding
 new collectors for hardware-specific data should follow the same pattern: a
 generic, path-arg, fixture-tested `read_<x>` plus a hardware-specific
