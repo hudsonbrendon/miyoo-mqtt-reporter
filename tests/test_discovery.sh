@@ -41,8 +41,8 @@ testPublishDiscoveryEmitsAllRetainedConfigs() {
     unset DEVICE_ID
 
     cnt="$(wc -l < "$PUB_LOG" | tr -d ' ')"
-    # 29 sensor + 3 binary_sensor = 32 retained discovery configs.
-    assertEquals "32" "$cnt"
+    # 42 sensor + 9 binary_sensor = 51 retained discovery configs.
+    assertEquals "51" "$cnt"
 
     # All retained, qos=0
     while IFS='|' read -r topic _payload qos retain; do
@@ -78,9 +78,28 @@ testPublishDiscoveryEmitsAllRetainedConfigs() {
             homeassistant/sensor/miyoo-test_wifi_bitrate/config) ;;
             homeassistant/sensor/miyoo-test_theme/config) ;;
             homeassistant/sensor/miyoo-test_charging_source/config) ;;
+            homeassistant/sensor/miyoo-test_mode/config) ;;
+            homeassistant/sensor/miyoo-test_bgm_volume/config) ;;
+            homeassistant/sensor/miyoo-test_hibernate_min/config) ;;
+            homeassistant/sensor/miyoo-test_language/config) ;;
+            homeassistant/sensor/miyoo-test_hue/config) ;;
+            homeassistant/sensor/miyoo-test_saturation/config) ;;
+            homeassistant/sensor/miyoo-test_contrast/config) ;;
+            homeassistant/sensor/miyoo-test_lumination/config) ;;
+            homeassistant/sensor/miyoo-test_playtime_total_hours/config) ;;
+            homeassistant/sensor/miyoo-test_playtime_today_min/config) ;;
+            homeassistant/sensor/miyoo-test_most_played/config) ;;
+            homeassistant/sensor/miyoo-test_last_played/config) ;;
+            homeassistant/sensor/miyoo-test_game_count/config) ;;
             homeassistant/binary_sensor/miyoo-test_charging/config) ;;
             homeassistant/binary_sensor/miyoo-test_ntp_synced/config) ;;
             homeassistant/binary_sensor/miyoo-test_mute/config) ;;
+            homeassistant/binary_sensor/miyoo-test_audiofix/config) ;;
+            homeassistant/binary_sensor/miyoo-test_blue_light/config) ;;
+            homeassistant/binary_sensor/miyoo-test_bgm_mute/config) ;;
+            homeassistant/binary_sensor/miyoo-test_autostart/config) ;;
+            homeassistant/binary_sensor/miyoo-test_battery_warning/config) ;;
+            homeassistant/binary_sensor/miyoo-test_cpuclock_hotkey/config) ;;
             *) fail "unexpected topic: $topic" ;;
         esac
     done < "$PUB_LOG"

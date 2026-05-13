@@ -1,0 +1,15 @@
+{
+	"vol":	7,
+	"mute":	0,
+	"bgmvol":	15,
+	"brightness":	10,
+	"hibernate":	15,
+	"lumination":	10,
+	"hue":	10,
+	"saturation":	10,
+	"contrast":	10,
+	"language":	"pt-BR.lang",
+	"audiofix":	1,
+	"wifi":	1,
+	"theme":	"/mnt/SDCARD/Themes/Onion Boy DX by PixelShift/"
+}

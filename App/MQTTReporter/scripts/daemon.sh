@@ -26,6 +26,9 @@ build_state_payload() {
     local bright_v vbat_v ibat_v ip_v wifi_raw game_raw
     local load5 load15 swap_used kernel governor cpu_min cpu_max
     local thr_hi thr_lo wifi_mac wifi_br ntp theme mute csrc
+    local mode bgm_vol hibernate_min lang hue sat ctr lum afix
+    local blf bgm_mute autostart bat_warn cpuhk
+    local pt_total pt_today most_played last_played gcount
 
     bat_raw="$(read_battery "$bat_dir")"
     ram_raw="$(read_ram "$mem_path")"
@@ -61,6 +64,25 @@ build_state_payload() {
         theme="$(read_theme_miyoo 2>/dev/null)"
         mute="$(read_mute_miyoo 2>/dev/null)"
         csrc="$(read_charging_source_miyoo 2>/dev/null)"
+        mode="$(detect_current_mode_miyoo 2>/dev/null)"
+        bgm_vol="$(read_bgm_volume_miyoo 2>/dev/null)"
+        hibernate_min="$(read_system_int_miyoo hibernate 2>/dev/null)"
+        lang="$(read_system_str_miyoo language 2>/dev/null)"
+        hue="$(read_system_int_miyoo hue 2>/dev/null)"
+        sat="$(read_system_int_miyoo saturation 2>/dev/null)"
+        ctr="$(read_system_int_miyoo contrast 2>/dev/null)"
+        lum="$(read_system_int_miyoo lumination 2>/dev/null)"
+        afix="$(read_system_int_miyoo audiofix 2>/dev/null)"
+        blf="$(read_blue_light_miyoo 2>/dev/null)"
+        bgm_mute="$(read_bgm_mute_miyoo 2>/dev/null)"
+        autostart="$(read_autostart_enabled_miyoo 2>/dev/null)"
+        bat_warn="$(read_battery_warning_enabled_miyoo 2>/dev/null)"
+        cpuhk="$(read_cpuclock_hotkey_miyoo 2>/dev/null)"
+        pt_total="$(read_playtime_total_miyoo 2>/dev/null)"
+        pt_today="$(read_playtime_today_miyoo 2>/dev/null)"
+        most_played="$(read_most_played_miyoo 2>/dev/null)"
+        last_played="$(read_last_played_miyoo 2>/dev/null)"
+        gcount="$(read_game_count_miyoo 2>/dev/null)"
     fi
 
     local bat_pct charging_bool charging_str ram_pct cpu_load
@@ -108,7 +130,26 @@ build_state_payload() {
     printf '"ntp_synced":"%s",' "${ntp:-OFF}"
     printf '"theme":%s,'      "$(_j_str "$theme")"
     printf '"mute":"%s",'     "${mute:-OFF}"
-    printf '"charging_source":%s' "$(_j_str "$csrc")"
+    printf '"charging_source":%s,' "$(_j_str "$csrc")"
+    printf '"mode":%s,'       "$(_j_str "$mode")"
+    printf '"bgm_volume":%s,' "$(_j_num "$bgm_vol")"
+    printf '"hibernate_min":%s,' "$(_j_num "$hibernate_min")"
+    printf '"language":%s,'   "$(_j_str "$lang")"
+    printf '"hue":%s,'        "$(_j_num "$hue")"
+    printf '"saturation":%s,' "$(_j_num "$sat")"
+    printf '"contrast":%s,'   "$(_j_num "$ctr")"
+    printf '"lumination":%s,' "$(_j_num "$lum")"
+    printf '"audiofix":%s,'   "$(_j_num "$afix")"
+    printf '"blue_light":"%s",' "${blf:-OFF}"
+    printf '"bgm_mute":"%s",' "${bgm_mute:-OFF}"
+    printf '"autostart":"%s",' "${autostart:-OFF}"
+    printf '"battery_warning":"%s",' "${bat_warn:-OFF}"
+    printf '"cpuclock_hotkey":"%s",' "${cpuhk:-OFF}"
+    printf '"playtime_total_hours":%s,' "$(_j_num "$pt_total")"
+    printf '"playtime_today_min":%s,'   "$(_j_num "$pt_today")"
+    printf '"most_played":%s,' "$(_j_str "$most_played")"
+    printf '"last_played":%s,' "$(_j_str "$last_played")"
+    printf '"game_count":%s'   "$(_j_num "$gcount")"
     printf '}'
 }
 

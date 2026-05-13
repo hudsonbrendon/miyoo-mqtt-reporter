@@ -436,3 +436,139 @@ read_charging_source_miyoo() {
     command -v axp >/dev/null 2>&1 || return 0
     axp 0 2>/dev/null | parse_axp_charging_source
 }
+
+# parse_system_json_int <cfg_file> <key>
+# Extracts integer value for <key> from Onion's system.json.
+parse_system_json_int() {
+    sed -n "s/.*\"$2\":[[:space:]]*\([0-9][0-9]*\).*/\1/p" "$1" | head -1
+}
+
+# parse_system_json_str <cfg_file> <key>
+# Extracts quoted string value for <key>.
+parse_system_json_str() {
+    sed -n "s|.*\"$2\":[[:space:]]*\"\([^\"]*\)\".*|\1|p" "$1" | head -1
+}
+
+# _system_json — echoes the first matching system json file (one per device)
+_system_json() {
+    local cfg
+    for cfg in /mnt/SDCARD/.tmp_update/config/system/*.json; do
+        [ -r "$cfg" ] || continue
+        printf '%s' "$cfg"
+        return
+    done
+}
+
+# read_system_int_miyoo <key>
+read_system_int_miyoo() {
+    local cfg
+    cfg="$(_system_json)"
+    [ -n "$cfg" ] || return 0
+    parse_system_json_int "$cfg" "$1"
+}
+
+# read_system_str_miyoo <key>
+read_system_str_miyoo() {
+    local cfg
+    cfg="$(_system_json)"
+    [ -n "$cfg" ] || return 0
+    parse_system_json_str "$cfg" "$1"
+}
+
+# read_bgm_volume_miyoo — Onion bgmvol 0-20 scaled to %.
+read_bgm_volume_miyoo() {
+    local v
+    v="$(read_system_int_miyoo bgmvol)"
+    [ -n "$v" ] || return 0
+    printf '%d' $((v * 5))
+}
+
+# Onion flag-file binary readers. Echo "ON"/"OFF" for HA binary_sensor.
+_flag_present_on() {
+    [ -e "$1" ] && printf 'ON' || printf 'OFF'
+}
+_flag_absent_on() {
+    [ -e "$1" ] && printf 'OFF' || printf 'ON'
+}
+
+read_blue_light_miyoo()      { _flag_present_on /tmp/.blfOn; }
+read_bgm_mute_miyoo()        { _flag_present_on /tmp/.bgmMute; }
+read_autostart_enabled_miyoo()      { _flag_absent_on /tmp/.noAutoStart; }
+read_battery_warning_enabled_miyoo(){ _flag_absent_on /tmp/.noBatteryWarning; }
+read_cpuclock_hotkey_miyoo() { _flag_present_on /tmp/.cpuClockHotkey; }
+
+# proc_exists <comm>
+# True (0) if any /proc/<pid>/comm matches the given name.
+proc_exists() {
+    local d c
+    for d in /proc/[0-9]*; do
+        [ -r "$d/comm" ] || continue
+        c="$(cat "$d/comm" 2>/dev/null)"
+        [ "$c" = "$1" ] && return 0
+    done
+    return 1
+}
+
+# detect_current_mode_miyoo
+# Returns one of: game / drastic / advmenu / launching / switcher / mainui / unknown.
+# Mirrors Onion's check_isXxx logic from src/common/system/state.h.
+detect_current_mode_miyoo() {
+    if [ -e /mnt/SDCARD/.tmp_update/cmd_to_run.sh ]; then
+        if proc_exists retroarch || proc_exists ra32; then
+            printf 'game'; return
+        fi
+        if proc_exists drastic; then
+            printf 'drastic'; return
+        fi
+        if proc_exists advmenu; then
+            printf 'advmenu'; return
+        fi
+        printf 'launching'
+        return
+    fi
+    if [ -e /mnt/SDCARD/.tmp_update/.runGameSwitcher ] && proc_exists gameSwitcher; then
+        printf 'switcher'; return
+    fi
+    if proc_exists MainUI; then
+        printf 'mainui'; return
+    fi
+    printf 'unknown'
+}
+
+# query_play_activity <sql>
+# Runs a SQL query against Onion's play_activity SQLite DB. Empty on any
+# failure (missing DB, missing sqlite3 binary, query error).
+query_play_activity() {
+    local db
+    command -v sqlite3 >/dev/null 2>&1 || return 0
+    for db in /mnt/SDCARD/Saves/CurrentProfile/play_activity/play_activity_db.sqlite \
+              /mnt/SDCARD/Saves/CurrentProfile/saves/playActivity.db; do
+        if [ -r "$db" ]; then
+            sqlite3 "$db" "$1" 2>/dev/null
+            return
+        fi
+    done
+}
+
+# Sessions ≤ 60 seconds are filtered out (matches Onion's own SUM query in
+# src/playActivity/playActivityDB.h — avoids counting accidental boots).
+
+read_playtime_total_miyoo() {
+    query_play_activity "SELECT printf('%.1f', COALESCE(SUM(play_time), 0) / 3600.0) FROM play_activity WHERE play_time > 60;"
+}
+
+read_playtime_today_miyoo() {
+    query_play_activity "SELECT COALESCE(SUM(play_time), 0) / 60 FROM play_activity WHERE play_time > 60 AND created_at >= strftime('%s', 'now', 'start of day', 'localtime');"
+}
+
+read_most_played_miyoo() {
+    query_play_activity "SELECT rom.name FROM rom JOIN play_activity ON rom.id = play_activity.rom_id WHERE play_activity.play_time > 60 GROUP BY rom.id ORDER BY SUM(play_activity.play_time) DESC LIMIT 1;"
+}
+
+read_last_played_miyoo() {
+    query_play_activity "SELECT rom.name FROM rom JOIN play_activity ON rom.id = play_activity.rom_id WHERE play_activity.play_time > 60 ORDER BY play_activity.created_at DESC LIMIT 1;"
+}
+
+read_game_count_miyoo() {
+    query_play_activity "SELECT COUNT(DISTINCT rom_id) FROM play_activity WHERE play_time > 60;"
+}

@@ -305,4 +305,29 @@ testParseAxpChargingSourceDetectsBatteryOnly() {
     assertEquals "none" "$out"
 }
 
+testParseSystemJsonIntReadsBgmVol() {
+    . "$COL"
+    assertEquals "15" "$(parse_system_json_int "$FIX/system-full.json" bgmvol)"
+}
+
+testParseSystemJsonIntReadsHibernate() {
+    . "$COL"
+    assertEquals "15" "$(parse_system_json_int "$FIX/system-full.json" hibernate)"
+}
+
+testParseSystemJsonIntReadsAudiofix() {
+    . "$COL"
+    assertEquals "1" "$(parse_system_json_int "$FIX/system-full.json" audiofix)"
+}
+
+testParseSystemJsonStrReadsLanguage() {
+    . "$COL"
+    assertEquals "pt-BR.lang" "$(parse_system_json_str "$FIX/system-full.json" language)"
+}
+
+testParseSystemJsonIntEmptyOnMissingKey() {
+    . "$COL"
+    assertEquals "" "$(parse_system_json_int "$FIX/system-full.json" doesnotexist)"
+}
+
 . "$SCRIPT_DIR/shunit2"
