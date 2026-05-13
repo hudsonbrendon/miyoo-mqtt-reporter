@@ -143,17 +143,29 @@ testParseIpAddrInetExtractsIpv4() {
     assertEquals "192.168.31.123" "$out"
 }
 
-testParseRetroarchCmdExtractsCoreAndGame() {
+testParseOnionCmdRetroarchFormatExtractsCoreAndGame() {
     . "$COL"
-    out="$(parse_retroarch_cmd < "$FIX/cmd-to-run-retroarch.sh")"
-    # Format: <core>|<rom_basename_no_ext>
+    out="$(parse_onion_cmd < "$FIX/cmd-to-run-retroarch.sh")"
     assertEquals "mgba|Pokemon FireRed" "$out"
 }
 
-testParseRetroarchCmdEmptyOnNonRetroarchScript() {
+testParseOnionCmdEmuLauncherFormatExtractsCoreAndGame() {
     . "$COL"
-    out="$(printf '#!/bin/sh\necho hello\n' | parse_retroarch_cmd)"
+    out="$(parse_onion_cmd < "$FIX/cmd-to-run-onion-gg.sh")"
+    # /mnt/SDCARD/Emu/GG/launch.sh + /mnt/SDCARD/Roms/GG/Shinobi.zip
+    assertEquals "GG|Shinobi" "$out"
+}
+
+testParseOnionCmdEmptyOnNonGameScript() {
+    . "$COL"
+    out="$(printf '#!/bin/sh\necho hello\n' | parse_onion_cmd)"
     assertEquals "" "$out"
+}
+
+testParseOnionCmdHandlesRomWithSpaces() {
+    . "$COL"
+    out="$(printf 'LD_PRELOAD=x  "/mnt/SDCARD/Emu/PSX/launch.sh" "/mnt/SDCARD/Roms/PSX/Final Fantasy VII.chd"\n' | parse_onion_cmd)"
+    assertEquals "PSX|Final Fantasy VII" "$out"
 }
 
 . "$SCRIPT_DIR/shunit2"

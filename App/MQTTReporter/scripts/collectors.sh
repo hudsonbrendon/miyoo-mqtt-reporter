@@ -193,19 +193,31 @@ parse_ip_addr_inet() {
     sed -n 's|.*inet[[:space:]]\([0-9.][0-9.]*\)/.*|\1|p' | head -1
 }
 
-# parse_retroarch_cmd
-# Reads cmd_to_run.sh content from stdin, echoes "<core>|<rom_basename>".
-# Output empty when no retroarch invocation is found.
-parse_retroarch_cmd() {
+# parse_onion_cmd
+# Reads .tmp_update/cmd_to_run.sh content from stdin, echoes "<core>|<rom_basename>".
+# Handles both formats Onion writes:
+#   1. RetroArch:        retroarch -L <path>/<core>_libretro.so "<rom_path>"
+#   2. Per-emulator:     LD_PRELOAD=... "/mnt/SDCARD/Emu/<CORE>/launch.sh" "<rom_path>"
+# Empty when neither format matches.
+parse_onion_cmd() {
     local line core rom_path rom_base rom_name
     line="$(cat)"
     [ -n "$line" ] || return 0
+
+    # RetroArch core name comes from `<dir>/<core>_libretro.so`
     core="$(printf '%s' "$line" | sed -n 's|.*/\([^/_ ]*\)_libretro\.so.*|\1|p' | head -1)"
-    rom_path="$(printf '%s' "$line" | sed -n 's|.*"\([^"]*\)".*|\1|p' | head -1)"
+    # Onion Emu launcher core comes from `/mnt/SDCARD/Emu/<CORE>/launch.sh`
+    if [ -z "$core" ]; then
+        core="$(printf '%s' "$line" | sed -n 's|.*/Emu/\([^/]*\)/launch\.sh.*|\1|p' | head -1)"
+    fi
+
+    # ROM path is always the LAST double-quoted string on the line.
+    rom_path="$(printf '%s' "$line" | sed -n 's|.*"\([^"]*\)"[[:space:]]*$|\1|p' | head -1)"
     if [ -n "$rom_path" ]; then
         rom_base="${rom_path##*/}"
         rom_name="${rom_base%.*}"
     fi
+
     if [ -z "$core" ] && [ -z "$rom_name" ]; then
         return 0
     fi
