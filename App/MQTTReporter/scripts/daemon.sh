@@ -158,6 +158,10 @@ if [ "${0##*/}" = "daemon.sh" ]; then
     if [ -r /tmp/percBat ]; then
         read_battery() { read_battery_miyoo; }
     fi
+    if command -v axp >/dev/null 2>&1; then
+        # shellcheck disable=SC2317
+        read_temperature() { read_temperature_miyoo; }
+    fi
     if ls /mnt/SDCARD/.tmp_update/config/system/*.json >/dev/null 2>&1; then
         read_volume() { read_volume_miyoo; }
     fi
