@@ -250,8 +250,9 @@ read_battery_voltage_miyoo() {
 }
 
 # read_battery_current_miyoo
-# Charge current (7Ah:7Bh, 12-bit) minus discharge current (7Ch:7Dh, 13-bit),
-# scale 0.5 mA per LSB. Signed result: positive = charging, negative = draining.
+# Discharge current (7Ch:7Dh, 13-bit) minus charge current (7Ah:7Bh, 12-bit),
+# scale 0.5 mA per LSB. Signed result follows the user-facing convention:
+# positive = consuming (draining), negative = charging.
 read_battery_current_miyoo() {
     command -v axp >/dev/null 2>&1 || return 0
     local cah cal dh dl charge_raw drain_raw
@@ -263,7 +264,7 @@ read_battery_current_miyoo() {
     charge_raw=$(( (0x${cah} << 4) | (0x${cal} & 0x0F) ))
     drain_raw=$(( (0x${dh} << 5) | (0x${dl} & 0x1F) ))
     awk -v c="$charge_raw" -v d="$drain_raw" \
-        'BEGIN { printf "%d", (c - d) / 2 }'
+        'BEGIN { printf "%d", (d - c) / 2 }'
 }
 
 # read_wifi_link_miyoo
@@ -307,6 +308,9 @@ parse_axp_temp() {
     lo="$(printf '%s\n' "$input" | sed -n '2s/.*read value:\([0-9a-fA-F][0-9a-fA-F]*\).*/\1/p')"
     [ -n "$hi" ] && [ -n "$lo" ] || return 0
     raw=$(( (0x${hi} << 4) | (0x${lo} & 0x0F) ))
+    # raw == 0 means the AXP temperature ADC is not sampling on this device —
+    # emit empty so HA shows "Unknown" instead of the formula floor of -144 °C.
+    [ "$raw" -eq 0 ] && return 0
     awk -v r="$raw" 'BEGIN { printf "%d", r * 0.1 - 144.7 }'
 }
 

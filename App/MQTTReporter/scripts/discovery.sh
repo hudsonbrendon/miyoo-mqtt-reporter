@@ -55,7 +55,7 @@ publish_discovery() {
     _emit "$did" sensor        ram         "Miyoo RAM Used"       "%"    "{{ value_json.ram }}"         "mdi:memory"            ""
     _emit "$did" sensor        cpu         "Miyoo CPU Load"       ""     "{{ value_json.cpu }}"         "mdi:chip"              ""
     _emit "$did" binary_sensor charging    "Miyoo Charging"       ""     "{{ value_json.charging }}"    "mdi:battery-charging"  "battery_charging"
-    _emit "$did" sensor        uptime      "Miyoo Uptime"         "s"    "{{ value_json.uptime }}"      "mdi:clock-outline"     "duration"
+    _emit "$did" sensor        uptime      "Miyoo Last Boot"      ""     "{{ as_datetime(utcnow().timestamp() - value_json.uptime) }}" "mdi:clock-outline" "timestamp"
     _emit "$did" sensor        temperature "Miyoo Temperature"    "°C"   "{{ value_json.temperature }}" "mdi:thermometer"       "temperature"
     _emit "$did" sensor        cpu_freq    "Miyoo CPU Frequency"  "MHz"  "{{ value_json.cpu_freq }}"    "mdi:speedometer"       "frequency"
     _emit "$did" sensor        sd_free     "Miyoo SD Free"        "MB"   "{{ value_json.sd_free }}"     "mdi:sd"                "data_size"

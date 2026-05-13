@@ -195,4 +195,12 @@ testParseAxpTempEmptyOnGarbage() {
     assertEquals "" "$out"
 }
 
+testParseAxpTempEmptyWhenAdcReturnsZero() {
+    . "$COL"
+    # AXP223 temperature ADC may be disabled on Miyoo — both regs read 0.
+    # We must return empty (Unknown in HA), not the formula floor of -144 °C.
+    out="$(printf 'Read /dev/i2c-1-34 reg 5e, read value:0\nRead /dev/i2c-1-34 reg 5f, read value:0\n' | parse_axp_temp)"
+    assertEquals "" "$out"
+}
+
 . "$SCRIPT_DIR/shunit2"
