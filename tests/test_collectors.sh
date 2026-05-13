@@ -228,4 +228,81 @@ testStripTempPrefixIsPosixSafe() {
     assertEquals "53000" "${raw#Temp=}"
 }
 
+testReadLoadAvgExtractsFieldByIndex() {
+    . "$COL"
+    # fixture: "0.42 0.31 0.18 2/95 1234"
+    assertEquals "0.42" "$(read_load_avg "$FIX/proc-loadavg" 1)"
+    assertEquals "0.31" "$(read_load_avg "$FIX/proc-loadavg" 2)"
+    assertEquals "0.18" "$(read_load_avg "$FIX/proc-loadavg" 3)"
+}
+
+testReadSwapUsedComputesDelta() {
+    . "$COL"
+    # fixture: SwapTotal=524288, SwapFree=460800 -> used=63488
+    assertEquals "63488" "$(read_swap_used "$FIX/proc-meminfo-with-swap")"
+}
+
+testReadSwapUsedEmptyWhenNoSwap() {
+    . "$COL"
+    # The standard meminfo fixture has no Swap lines.
+    out="$(read_swap_used "$FIX/proc-meminfo")"
+    assertEquals "" "$out"
+}
+
+testReadFirstLineCatsKernelVersion() {
+    . "$COL"
+    assertEquals "5.10.99+" "$(read_first_line "$FIX/kernel-version")"
+}
+
+testReadFirstLineEmptyOnMissingFile() {
+    . "$COL"
+    out="$(read_first_line /no/such/file 2>/dev/null)"
+    assertEquals "" "$out"
+}
+
+testReadCpuFreqMinMhz() {
+    . "$COL"
+    # 600000 kHz -> 600 MHz
+    assertEquals "600" "$(read_cpu_freq_khz_to_mhz "$FIX/cpufreq-min-freq")"
+}
+
+testReadCpuFreqMaxMhz() {
+    . "$COL"
+    assertEquals "1200" "$(read_cpu_freq_khz_to_mhz "$FIX/cpufreq-max-freq")"
+}
+
+testParseIwLinkBitrateExtractsMbps() {
+    . "$COL"
+    # fixture line: "tx bitrate: 24.0 MBit/s" → 24
+    out="$(parse_iw_link_bitrate < "$FIX/iw-dev-link.txt")"
+    assertEquals "24" "$out"
+}
+
+testParseIwLinkBitrateEmptyOnGarbage() {
+    . "$COL"
+    out="$(printf 'no link\n' | parse_iw_link_bitrate)"
+    assertEquals "" "$out"
+}
+
+testParseAxpChargingSourceDetectsAcin() {
+    . "$COL"
+    # 0xf4 = 11110100 → bit7 set (ACIN), bit5 clear (no VBUS)
+    out="$(parse_axp_charging_source < "$FIX/axp-reg-0-charging-acin.txt")"
+    assertEquals "ac" "$out"
+}
+
+testParseAxpChargingSourceDetectsVbus() {
+    . "$COL"
+    # 0x34 = 00110100 → bit5 set, bit7 clear
+    out="$(parse_axp_charging_source < "$FIX/axp-reg-0-vbus.txt")"
+    assertEquals "usb" "$out"
+}
+
+testParseAxpChargingSourceDetectsBatteryOnly() {
+    . "$COL"
+    # 0x00 = no external power
+    out="$(parse_axp_charging_source < "$FIX/axp-reg-0-battery.txt")"
+    assertEquals "none" "$out"
+}
+
 . "$SCRIPT_DIR/shunit2"

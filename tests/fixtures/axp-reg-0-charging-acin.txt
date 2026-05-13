@@ -1,0 +1,1 @@
+Read /dev/i2c-1-34 reg 0, read value:c4

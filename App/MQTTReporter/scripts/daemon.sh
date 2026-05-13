@@ -24,6 +24,8 @@ build_state_payload() {
     local bat_raw ram_raw cpu_raw vol_raw
     local uptime_v temp_v cpufreq_v sdfree_v
     local bright_v vbat_v ibat_v ip_v wifi_raw game_raw
+    local load5 load15 swap_used kernel governor cpu_min cpu_max
+    local thr_hi thr_lo wifi_mac wifi_br ntp theme mute csrc
 
     bat_raw="$(read_battery "$bat_dir")"
     ram_raw="$(read_ram "$mem_path")"
@@ -35,6 +37,17 @@ build_state_payload() {
     cpufreq_v="$(read_cpu_freq /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null)"
     sdfree_v="$(read_sd_free /mnt/SDCARD 2>/dev/null)"
 
+    load5="$(read_load_avg /proc/loadavg 2 2>/dev/null)"
+    load15="$(read_load_avg /proc/loadavg 3 2>/dev/null)"
+    swap_used="$(read_swap_used /proc/meminfo 2>/dev/null)"
+    kernel="$(uname -r 2>/dev/null)"
+    governor="$(read_first_line /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)"
+    cpu_min="$(read_cpu_freq_khz_to_mhz /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null)"
+    cpu_max="$(read_cpu_freq_khz_to_mhz /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)"
+    thr_hi="$(read_first_line /sys/devices/system/cpu/cpufreq/temp_adjust_threshold_hi 2>/dev/null)"
+    thr_lo="$(read_first_line /sys/devices/system/cpu/cpufreq/temp_adjust_threshold_lo 2>/dev/null)"
+    wifi_mac="$(read_first_line /sys/class/net/wlan0/address 2>/dev/null)"
+
     # Miyoo-only readers are no-ops on the dev host (commands absent).
     if command -v read_brightness_miyoo >/dev/null 2>&1; then
         bright_v="$(read_brightness_miyoo 2>/dev/null)"
@@ -43,6 +56,11 @@ build_state_payload() {
         ip_v="$(read_ip_miyoo 2>/dev/null)"
         wifi_raw="$(read_wifi_link_miyoo 2>/dev/null)"
         game_raw="$(read_running_game_miyoo 2>/dev/null)"
+        wifi_br="$(read_wifi_bitrate_miyoo 2>/dev/null)"
+        ntp="$(read_ntp_synced_miyoo 2>/dev/null)"
+        theme="$(read_theme_miyoo 2>/dev/null)"
+        mute="$(read_mute_miyoo 2>/dev/null)"
+        csrc="$(read_charging_source_miyoo 2>/dev/null)"
     fi
 
     local bat_pct charging_bool charging_str ram_pct cpu_load
@@ -75,7 +93,22 @@ build_state_payload() {
     printf '"wifi_ssid":%s,'  "$(_j_str "$ssid")"
     printf '"ip":%s,'         "$(_j_str "$ip_v")"
     printf '"core":%s,'       "$(_j_str "$core")"
-    printf '"game":%s'        "$(_j_str "$game")"
+    printf '"game":%s,'       "$(_j_str "$game")"
+    printf '"cpu_load5":%s,'  "$(_j_num "$load5")"
+    printf '"cpu_load15":%s,' "$(_j_num "$load15")"
+    printf '"swap_used":%s,'  "$(_j_num "$swap_used")"
+    printf '"kernel":%s,'     "$(_j_str "$kernel")"
+    printf '"cpu_governor":%s,' "$(_j_str "$governor")"
+    printf '"cpu_min_freq":%s,' "$(_j_num "$cpu_min")"
+    printf '"cpu_max_freq":%s,' "$(_j_num "$cpu_max")"
+    printf '"temp_throttle_hi":%s,' "$(_j_num "$thr_hi")"
+    printf '"temp_throttle_lo":%s,' "$(_j_num "$thr_lo")"
+    printf '"wifi_mac":%s,'   "$(_j_str "$wifi_mac")"
+    printf '"wifi_bitrate":%s,' "$(_j_num "$wifi_br")"
+    printf '"ntp_synced":"%s",' "${ntp:-OFF}"
+    printf '"theme":%s,'      "$(_j_str "$theme")"
+    printf '"mute":"%s",'     "${mute:-OFF}"
+    printf '"charging_source":%s' "$(_j_str "$csrc")"
     printf '}'
 }
 

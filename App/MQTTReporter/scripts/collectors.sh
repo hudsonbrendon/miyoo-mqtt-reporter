@@ -328,3 +328,119 @@ read_temperature_miyoo() {
     v="${raw#Temp=}"
     scale_temp "$v"
 }
+
+# read_load_avg <loadavg_path> <field>
+# Field 1=load1, 2=load5, 3=load15. Echoes the float as a string.
+read_load_avg() {
+    local f="$1"
+    local field="$2"
+    [ -r "$f" ] || return 0
+    awk -v fld="$field" '{ printf "%s", $fld }' "$f"
+}
+
+# read_swap_used <meminfo_path>
+# Echoes used swap in kB (SwapTotal - SwapFree). Empty if no swap config'd.
+read_swap_used() {
+    local f="$1"
+    [ -r "$f" ] || return 0
+    local total free
+    total="$(awk '/^SwapTotal:/ { print $2; exit }' "$f")"
+    free="$(awk '/^SwapFree:/  { print $2; exit }' "$f")"
+    [ -n "$total" ] && [ -n "$free" ] || return 0
+    [ "$total" -eq 0 ] && return 0
+    printf '%d' $((total - free))
+}
+
+# read_first_line <path>
+# Generic helper: cat first line of file (kernel version, governor, MAC, etc).
+read_first_line() {
+    local f="$1"
+    [ -r "$f" ] || return 0
+    head -1 "$f" 2>/dev/null
+}
+
+# read_cpu_freq_khz_to_mhz <path>
+# Reads kHz from sysfs, echoes MHz integer. Used by min/max freq.
+read_cpu_freq_khz_to_mhz() {
+    local f="$1"
+    [ -r "$f" ] || return 0
+    awk '{ printf "%d", $1 / 1000 }' "$f"
+}
+
+# parse_iw_link_bitrate
+# Reads `iw dev wlan0 link` from stdin, echoes tx bitrate in Mbps (integer).
+parse_iw_link_bitrate() {
+    sed -n 's|.*tx bitrate:[[:space:]]*\([0-9][0-9]*\).*|\1|p' | head -1
+}
+
+# read_wifi_bitrate_miyoo
+read_wifi_bitrate_miyoo() {
+    command -v iw >/dev/null 2>&1 || return 0
+    iw dev wlan0 link 2>/dev/null | parse_iw_link_bitrate
+}
+
+# read_ntp_synced_miyoo
+# Onion writes /tmp/ntp_synced as a flag-file once time is synced.
+# Echoes ON/OFF (HA binary_sensor default payload).
+read_ntp_synced_miyoo() {
+    if [ -e /tmp/ntp_synced ]; then
+        printf 'ON'
+    else
+        printf 'OFF'
+    fi
+}
+
+# read_theme_miyoo
+# Echoes the basename of the theme path in system.json.
+read_theme_miyoo() {
+    local cfg theme
+    for cfg in /mnt/SDCARD/.tmp_update/config/system/*.json; do
+        [ -r "$cfg" ] || continue
+        # theme value is a path like /mnt/SDCARD/Themes/<name>/ — extract <name>
+        theme="$(sed -n 's|.*"theme":[[:space:]]*"[^"]*/\([^/"]*\)/*"|\1|p' "$cfg" | head -1)"
+        printf '%s' "$theme"
+        return 0
+    done
+}
+
+# read_mute_miyoo
+# Echoes ON/OFF (HA binary_sensor default) from system.json `mute`.
+# Stale (only persisted on MainUI save events — same caveat as brightness).
+read_mute_miyoo() {
+    local cfg m
+    for cfg in /mnt/SDCARD/.tmp_update/config/system/*.json; do
+        [ -r "$cfg" ] || continue
+        m="$(sed -n 's/.*"mute":[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$cfg" | head -1)"
+        if [ "$m" = "1" ]; then printf 'ON'; else printf 'OFF'; fi
+        return 0
+    done
+    printf 'OFF'
+}
+
+# parse_axp_charging_source
+# Reads `axp 0` output from stdin, decodes the power-source bits per AXP223:
+#   bit 7 (0x80): ACIN exists (charger jack present)
+#   bit 5 (0x20): VBUS exists (USB host)
+# Echoes: "ac", "usb", "ac+usb", or "none".
+parse_axp_charging_source() {
+    local hex acin vbus
+    hex="$(parse_axp_byte)"
+    [ -n "$hex" ] || return 0
+    acin=$(( 0x${hex} & 0x80 ))
+    vbus=$(( 0x${hex} & 0x20 ))
+    if [ "$acin" -ne 0 ] && [ "$vbus" -ne 0 ]; then
+        printf 'ac+usb'
+    elif [ "$acin" -ne 0 ]; then
+        printf 'ac'
+    elif [ "$vbus" -ne 0 ]; then
+        printf 'usb'
+    else
+        printf 'none'
+    fi
+}
+
+# read_charging_source_miyoo
+read_charging_source_miyoo() {
+    command -v axp >/dev/null 2>&1 || return 0
+    axp 0 2>/dev/null | parse_axp_charging_source
+}

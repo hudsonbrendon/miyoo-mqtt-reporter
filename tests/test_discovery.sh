@@ -41,8 +41,8 @@ testPublishDiscoveryEmitsAllRetainedConfigs() {
     unset DEVICE_ID
 
     cnt="$(wc -l < "$PUB_LOG" | tr -d ' ')"
-    # 16 sensor + 1 binary_sensor = 17 retained discovery configs.
-    assertEquals "17" "$cnt"
+    # 29 sensor + 3 binary_sensor = 32 retained discovery configs.
+    assertEquals "32" "$cnt"
 
     # All retained, qos=0
     while IFS='|' read -r topic _payload qos retain; do
@@ -65,7 +65,22 @@ testPublishDiscoveryEmitsAllRetainedConfigs() {
             homeassistant/sensor/miyoo-test_ip/config) ;;
             homeassistant/sensor/miyoo-test_core/config) ;;
             homeassistant/sensor/miyoo-test_game/config) ;;
+            homeassistant/sensor/miyoo-test_cpu_load5/config) ;;
+            homeassistant/sensor/miyoo-test_cpu_load15/config) ;;
+            homeassistant/sensor/miyoo-test_swap_used/config) ;;
+            homeassistant/sensor/miyoo-test_kernel/config) ;;
+            homeassistant/sensor/miyoo-test_cpu_governor/config) ;;
+            homeassistant/sensor/miyoo-test_cpu_min_freq/config) ;;
+            homeassistant/sensor/miyoo-test_cpu_max_freq/config) ;;
+            homeassistant/sensor/miyoo-test_temp_throttle_hi/config) ;;
+            homeassistant/sensor/miyoo-test_temp_throttle_lo/config) ;;
+            homeassistant/sensor/miyoo-test_wifi_mac/config) ;;
+            homeassistant/sensor/miyoo-test_wifi_bitrate/config) ;;
+            homeassistant/sensor/miyoo-test_theme/config) ;;
+            homeassistant/sensor/miyoo-test_charging_source/config) ;;
             homeassistant/binary_sensor/miyoo-test_charging/config) ;;
+            homeassistant/binary_sensor/miyoo-test_ntp_synced/config) ;;
+            homeassistant/binary_sensor/miyoo-test_mute/config) ;;
             *) fail "unexpected topic: $topic" ;;
         esac
     done < "$PUB_LOG"
