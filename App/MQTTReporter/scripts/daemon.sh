@@ -29,6 +29,7 @@ build_state_payload() {
     local mode bgm_vol hibernate_min lang hue sat ctr lum afix
     local blf bgm_mute autostart bat_warn cpuhk
     local pt_total pt_today most_played last_played gcount
+    local onion_v cores mem_kb pcount rx tx wquality wfreq wbssid dns sscount sdpct
 
     bat_raw="$(read_battery "$bat_dir")"
     ram_raw="$(read_ram "$mem_path")"
@@ -50,6 +51,13 @@ build_state_payload() {
     thr_hi="$(read_first_line /sys/devices/system/cpu/cpufreq/temp_adjust_threshold_hi 2>/dev/null)"
     thr_lo="$(read_first_line /sys/devices/system/cpu/cpufreq/temp_adjust_threshold_lo 2>/dev/null)"
     wifi_mac="$(read_first_line /sys/class/net/wlan0/address 2>/dev/null)"
+    cores="$(read_cpu_cores 2>/dev/null)"
+    mem_kb="$(read_mem_total "$mem_path" 2>/dev/null)"
+    pcount="$(read_process_count 2>/dev/null)"
+    rx="$(read_wifi_rx_bytes 2>/dev/null)"
+    tx="$(read_wifi_tx_bytes 2>/dev/null)"
+    wquality="$(read_wifi_quality 2>/dev/null)"
+    dns="$(read_dns_server 2>/dev/null)"
 
     # Miyoo-only readers are no-ops on the dev host (commands absent).
     if command -v read_brightness_miyoo >/dev/null 2>&1; then
@@ -83,6 +91,11 @@ build_state_payload() {
         most_played="$(read_most_played_miyoo 2>/dev/null)"
         last_played="$(read_last_played_miyoo 2>/dev/null)"
         gcount="$(read_game_count_miyoo 2>/dev/null)"
+        onion_v="$(read_onion_version_miyoo 2>/dev/null)"
+        wfreq="$(read_wifi_freq_miyoo 2>/dev/null)"
+        wbssid="$(read_wifi_bssid_miyoo 2>/dev/null)"
+        sscount="$(read_save_state_count_miyoo 2>/dev/null)"
+        sdpct="$(read_sd_usage_pct_miyoo 2>/dev/null)"
     fi
 
     local bat_pct charging_bool charging_str ram_pct cpu_load
@@ -149,7 +162,19 @@ build_state_payload() {
     printf '"playtime_today_min":%s,'   "$(_j_num "$pt_today")"
     printf '"most_played":%s,' "$(_j_str "$most_played")"
     printf '"last_played":%s,' "$(_j_str "$last_played")"
-    printf '"game_count":%s'   "$(_j_num "$gcount")"
+    printf '"game_count":%s,' "$(_j_num "$gcount")"
+    printf '"onion_version":%s,' "$(_j_str "$onion_v")"
+    printf '"cpu_cores":%s,'  "$(_j_num "$cores")"
+    printf '"mem_total_kb":%s,' "$(_j_num "$mem_kb")"
+    printf '"process_count":%s,' "$(_j_num "$pcount")"
+    printf '"wifi_rx_bytes":%s,' "$(_j_num "$rx")"
+    printf '"wifi_tx_bytes":%s,' "$(_j_num "$tx")"
+    printf '"wifi_quality":%s,' "$(_j_num "$wquality")"
+    printf '"wifi_freq":%s,'  "$(_j_num "$wfreq")"
+    printf '"wifi_bssid":%s,' "$(_j_str "$wbssid")"
+    printf '"dns_server":%s,' "$(_j_str "$dns")"
+    printf '"save_state_count":%s,' "$(_j_num "$sscount")"
+    printf '"sd_usage_pct":%s' "$(_j_num "$sdpct")"
     printf '}'
 }
 

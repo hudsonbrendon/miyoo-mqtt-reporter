@@ -41,8 +41,8 @@ testPublishDiscoveryEmitsAllRetainedConfigs() {
     unset DEVICE_ID
 
     cnt="$(wc -l < "$PUB_LOG" | tr -d ' ')"
-    # 42 sensor + 9 binary_sensor = 51 retained discovery configs.
-    assertEquals "51" "$cnt"
+    # 54 sensor + 9 binary_sensor = 63 retained discovery configs.
+    assertEquals "63" "$cnt"
 
     # All retained, qos=0
     while IFS='|' read -r topic _payload qos retain; do
@@ -100,6 +100,18 @@ testPublishDiscoveryEmitsAllRetainedConfigs() {
             homeassistant/binary_sensor/miyoo-test_autostart/config) ;;
             homeassistant/binary_sensor/miyoo-test_battery_warning/config) ;;
             homeassistant/binary_sensor/miyoo-test_cpuclock_hotkey/config) ;;
+            homeassistant/sensor/miyoo-test_onion_version/config) ;;
+            homeassistant/sensor/miyoo-test_cpu_cores/config) ;;
+            homeassistant/sensor/miyoo-test_mem_total_kb/config) ;;
+            homeassistant/sensor/miyoo-test_process_count/config) ;;
+            homeassistant/sensor/miyoo-test_wifi_rx_bytes/config) ;;
+            homeassistant/sensor/miyoo-test_wifi_tx_bytes/config) ;;
+            homeassistant/sensor/miyoo-test_wifi_quality/config) ;;
+            homeassistant/sensor/miyoo-test_wifi_freq/config) ;;
+            homeassistant/sensor/miyoo-test_wifi_bssid/config) ;;
+            homeassistant/sensor/miyoo-test_dns_server/config) ;;
+            homeassistant/sensor/miyoo-test_save_state_count/config) ;;
+            homeassistant/sensor/miyoo-test_sd_usage_pct/config) ;;
             *) fail "unexpected topic: $topic" ;;
         esac
     done < "$PUB_LOG"

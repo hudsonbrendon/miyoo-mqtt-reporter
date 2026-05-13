@@ -572,3 +572,115 @@ read_last_played_miyoo() {
 read_game_count_miyoo() {
     query_play_activity "SELECT COUNT(DISTINCT rom_id) FROM play_activity WHERE play_time > 60;"
 }
+
+# read_onion_version_miyoo
+read_onion_version_miyoo() {
+    read_first_line /mnt/SDCARD/.tmp_update/onionVersion/version.txt
+}
+
+# read_cpu_cores
+read_cpu_cores() {
+    [ -r /proc/cpuinfo ] || return 0
+    grep -c '^processor' /proc/cpuinfo
+}
+
+# read_mem_total <meminfo_path>
+read_mem_total() {
+    local f="$1"
+    [ -r "$f" ] || return 0
+    awk '/^MemTotal:/ { print $2; exit }' "$f"
+}
+
+# read_process_count
+read_process_count() {
+    set -- /proc/[0-9]*
+    [ -e "$1" ] || { echo 0; return; }
+    echo "$#"
+}
+
+# parse_net_dev_field <iface> <field_index>
+# Reads /proc/net/dev from stdin. Fields (1-indexed after the iface name colon):
+#   1=RX bytes 2=RX packets 3=RX errs ... 9=TX bytes 10=TX packets ...
+parse_net_dev_field() {
+    local iface="$1" idx="$2"
+    awk -v ifc="$iface:" -v i="$idx" '
+        $1 == ifc { print $(i + 1); exit }
+    '
+}
+
+# read_wifi_rx_bytes
+read_wifi_rx_bytes() {
+    [ -r /proc/net/dev ] || return 0
+    parse_net_dev_field wlan0 1 < /proc/net/dev
+}
+
+# read_wifi_tx_bytes
+read_wifi_tx_bytes() {
+    [ -r /proc/net/dev ] || return 0
+    parse_net_dev_field wlan0 9 < /proc/net/dev
+}
+
+# parse_wireless_quality
+# Reads /proc/net/wireless from stdin, echoes link quality column for wlan0.
+parse_wireless_quality() {
+    awk '
+        /^[[:space:]]*wlan0:/ {
+            # Fields: wlan0: status quality. level. noise. ...
+            # Strip trailing dot from quality.
+            q = $3; sub(/\.$/, "", q)
+            print q; exit
+        }
+    '
+}
+
+# read_wifi_quality
+read_wifi_quality() {
+    [ -r /proc/net/wireless ] || return 0
+    parse_wireless_quality < /proc/net/wireless
+}
+
+# parse_iw_link_freq
+# Reads `iw dev wlan0 link` from stdin, echoes the freq MHz value.
+parse_iw_link_freq() {
+    sed -n 's|.*freq:[[:space:]]*\([0-9][0-9]*\).*|\1|p' | head -1
+}
+
+# parse_iw_link_bssid
+# Reads `iw dev wlan0 link` from stdin, echoes the AP MAC ("Connected to <mac>").
+parse_iw_link_bssid() {
+    sed -n 's|^Connected to \([0-9a-fA-F:]\{17\}\).*|\1|p' | head -1
+}
+
+# read_wifi_freq_miyoo / read_wifi_bssid_miyoo
+read_wifi_freq_miyoo() {
+    command -v iw >/dev/null 2>&1 || return 0
+    iw dev wlan0 link 2>/dev/null | parse_iw_link_freq
+}
+read_wifi_bssid_miyoo() {
+    command -v iw >/dev/null 2>&1 || return 0
+    iw dev wlan0 link 2>/dev/null | parse_iw_link_bssid
+}
+
+# parse_resolv_nameserver
+# Reads /etc/resolv.conf from stdin, echoes first nameserver IP.
+parse_resolv_nameserver() {
+    sed -n 's/^nameserver[[:space:]][[:space:]]*\([0-9.][0-9.]*\)/\1/p' | head -1
+}
+
+# read_dns_server
+read_dns_server() {
+    [ -r /etc/resolv.conf ] || return 0
+    parse_resolv_nameserver < /etc/resolv.conf
+}
+
+# read_save_state_count_miyoo — counts *.state* files under /mnt/SDCARD/Saves.
+# May be slow on large libraries; the daemon's 10s interval absorbs the cost.
+read_save_state_count_miyoo() {
+    [ -d /mnt/SDCARD/Saves ] || return 0
+    find /mnt/SDCARD/Saves -type f -name '*.state*' 2>/dev/null | wc -l | tr -d ' '
+}
+
+# read_sd_usage_pct_miyoo — % used of /mnt/SDCARD.
+read_sd_usage_pct_miyoo() {
+    df /mnt/SDCARD 2>/dev/null | awk 'NR==2 { sub(/%$/, "", $5); print $5 }'
+}
