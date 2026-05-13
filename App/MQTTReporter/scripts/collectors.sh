@@ -78,3 +78,55 @@ read_cpu() {
         printf "%s|%s", $1, a[1]
     }' "$f"
 }
+
+# read_battery_miyoo
+# Miyoo Mini Plus has no /sys/class/power_supply. Onion's batmon writes
+# /tmp/percBat; charging is bit 0x4 of axp register 0.
+read_battery_miyoo() {
+    [ -r /tmp/percBat ] || return 0
+    local cap
+    cap="$(cat /tmp/percBat)"
+    [ -n "$cap" ] || return 0
+    local charging=false
+    if command -v axp >/dev/null 2>&1; then
+        local reg0
+        reg0="$(axp 0 2>/dev/null | sed -n 's/.*read value:\([0-9a-fA-F][0-9a-fA-F]*\).*/\1/p')"
+        if [ -n "$reg0" ]; then
+            if [ $((0x${reg0} & 4)) -eq 4 ]; then
+                charging=true
+            fi
+        fi
+    fi
+    printf '%s|%s' "$cap" "$charging"
+}
+
+# read_volume_miyoo
+# Prefers /tmp/live_vol (real-time from vol-watcher.sh), falls back to
+# Onion's config/system/<uuid>.json (only persisted on power-off / menu nav).
+# Scale 0-20 → 0-100. mute=1 forces 0 (read from system.json, stale).
+read_volume_miyoo() {
+    local cfg mute vol
+    # Mute is only available from the (stale) system.json — accept that.
+    for cfg in /mnt/SDCARD/.tmp_update/config/system/*.json; do
+        [ -r "$cfg" ] || continue
+        mute="$(sed -n 's/.*"mute":[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$cfg" | head -1)"
+        break
+    done
+    if [ "$mute" = "1" ]; then
+        printf '0'
+        return 0
+    fi
+    if [ -r /tmp/live_vol ]; then
+        vol="$(cat /tmp/live_vol)"
+        [ -n "$vol" ] || return 0
+        printf '%d' $((vol * 5))
+        return 0
+    fi
+    for cfg in /mnt/SDCARD/.tmp_update/config/system/*.json; do
+        [ -r "$cfg" ] || continue
+        vol="$(sed -n 's/.*"vol":[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$cfg" | head -1)"
+        [ -n "$vol" ] || return 0
+        printf '%d' $((vol * 5))
+        return 0
+    done
+}

@@ -1,19 +1,28 @@
 # MQTTReporter configuration. Copy to mqtt.conf and edit.
+# Lines are sourced via POSIX `.` — they must be valid shell `KEY=VALUE`.
 
-# Broker
-MQTT_HOST=homeassistant.local
+# ── Broker ────────────────────────────────────────────────────────────────────
+# IMPORTANT: use an IP address. The Miyoo Mini Plus has no mDNS resolver, so
+# `homeassistant.local` will NOT resolve. Use the LAN IP of your broker.
+MQTT_HOST=192.168.1.10
 MQTT_PORT=1883
 MQTT_USER=
 MQTT_PASS=
 
-# Publish interval in seconds
-INTERVAL=30
+# ── Publish interval (seconds) ────────────────────────────────────────────────
+INTERVAL=10
 
-# Override device id (default: derived from wlan0 MAC, fallback "miyoominiplus")
-# DEVICE_ID=miyoo-couch
+# ── Device identifier ─────────────────────────────────────────────────────────
+# OnionOS exports DEVICE_ID=354 (Mini Plus model code) in the boot env, so the
+# wlan0-MAC auto-detection in device_id() never fires. Pin a stable, human-
+# readable value here:
+DEVICE_ID=miyoominiplus
 
-# Sysfs path for the battery. Leave blank to auto-detect under /sys/class/power_supply.
+# ── Battery sysfs path (UNUSED on Miyoo Mini Plus) ────────────────────────────
+# The Mini Plus has no /sys/class/power_supply. The daemon falls back to
+# /tmp/percBat (Onion's batmon) and `axp 0` register bit 0x4 for the charging
+# flag. Leave this blank.
 BATTERY_PATH=
 
-# Optional: keepalive seconds passed to mosquitto_pub
+# ── Optional: mosquitto_pub keepalive (seconds) ──────────────────────────────
 KEEPALIVE=60

@@ -121,5 +121,12 @@ if [ "${0##*/}" = "daemon.sh" ]; then
     . "$APP_DIR/scripts/collectors.sh"
     # shellcheck disable=SC1091
     . "$APP_DIR/scripts/discovery.sh"
+    # Miyoo overrides: detect platform-specific data sources at runtime.
+    if [ -r /tmp/percBat ]; then
+        read_battery() { read_battery_miyoo; }
+    fi
+    if ls /mnt/SDCARD/.tmp_update/config/system/*.json >/dev/null 2>&1; then
+        read_volume() { read_volume_miyoo; }
+    fi
     daemon_main "$APP_DIR/etc/mqtt.conf"
 fi

@@ -1,29 +1,58 @@
-mosquitto_pub
-=============
-This file is a placeholder. The real `mosquitto_pub` ARMv7 binary must be
-installed before the daemon can publish to MQTT.
+mosquitto_pub (and bundled libs)
+================================
 
-Three ways to acquire it:
+The vendored binary at `mosquitto_pub` is `mosquitto-clients 1.5.7-1+deb10u1`
+from Debian Buster (armhf). It links against:
 
-1. From an existing OnionOS plugin that bundles mosquitto-clients:
-   Many community plugins (e.g. *_addon installers) include a cross-compiled
-   mosquitto-clients. Extract `mosquitto_pub` and any required libmosquitto*.so
-   shared libs, drop them into this directory (binary here, .so files into ../lib/).
+    ../lib/libmosquitto.so.1     mosquitto 1.5.7-1+deb10u1 (Debian Buster armhf)
+    ../lib/libssl.so.1.1         openssl 1.1.1n-0+deb10u3 (Debian Buster armhf)
+    ../lib/libcrypto.so.1.1      openssl 1.1.1n-0+deb10u3 (Debian Buster armhf)
 
-2. From Eclipse Mosquitto sources via OnionUI/Onion buildroot:
-   git clone https://github.com/OnionUI/Onion.git
-   cd Onion/third-party
-   # Follow buildroot README to configure ARM target + mosquitto package.
-   # Output: output/target/usr/bin/mosquitto_pub
+Why Buster (Debian 10) and not a newer release?
+-----------------------------------------------
+OnionOS ships glibc up to **2.28** under `/mnt/SDCARD/.tmp_update/lib/parasyte`.
+Debian Bookworm (12) binaries require GLIBC_2.34+ which OnionOS lacks.
+Buster's glibc 2.28 matches exactly, so its binaries run on the Miyoo.
 
-3. Via Debian/Ubuntu armhf cross-toolchain:
-   apt-get install gcc-arm-linux-gnueabihf
-   apt-get download mosquitto-clients:armhf
-   # Extract from .deb: dpkg-deb -x ./mosquitto-clients_*.deb extracted/
-   # Copy extracted/usr/bin/mosquitto_pub here, and any
-   # extracted/usr/lib/arm-linux-gnueabihf/libmosquitto.so* into ../lib/
+The OnionOS startup hook prepends `lib/parasyte` to `LD_LIBRARY_PATH` so the
+loader picks the 2.28 libc before the older system one.
 
-After installing:
-- chmod +x mosquitto_pub
-- Verify: `file mosquitto_pub` should report "ELF 32-bit LSB executable, ARM"
-- Update this file with the source and version actually used.
+Rebuilding from scratch
+-----------------------
+
+Easiest path on a Debian/Ubuntu workstation (or any machine with `ar` + `tar`):
+
+    mkdir /tmp/mqv && cd /tmp/mqv
+    curl -fsSL -o mc.deb     'http://archive.debian.org/debian/pool/main/m/mosquitto/mosquitto-clients_1.5.7-1+deb10u1_armhf.deb'
+    curl -fsSL -o libm.deb   'http://archive.debian.org/debian/pool/main/m/mosquitto/libmosquitto1_1.5.7-1+deb10u1_armhf.deb'
+    curl -fsSL -o libssl.deb 'http://archive.debian.org/debian/pool/main/o/openssl/libssl1.1_1.1.1n-0+deb10u3_armhf.deb'
+
+    mkdir extracted
+    for d in mc.deb libm.deb libssl.deb; do
+        ar x "$d" && tar -xf data.tar.xz -C extracted/
+        rm -f control.tar.* data.tar.* debian-binary
+    done
+
+    # Then copy into the repo (run from the repo root):
+    cp extracted/usr/bin/mosquitto_pub                                        App/MQTTReporter/bin/
+    cp extracted/usr/lib/arm-linux-gnueabihf/libmosquitto.so.1                App/MQTTReporter/lib/
+    cp extracted/usr/lib/arm-linux-gnueabihf/libssl.so.1.1                    App/MQTTReporter/lib/
+    cp extracted/usr/lib/arm-linux-gnueabihf/libcrypto.so.1.1                 App/MQTTReporter/lib/
+    chmod +x App/MQTTReporter/bin/mosquitto_pub
+
+    # Verify all are ARM ELFs:
+    file App/MQTTReporter/bin/mosquitto_pub App/MQTTReporter/lib/lib*.so.*
+    # Expected: "ELF 32-bit LSB ..., ARM, EABI5 ..."
+
+Notes
+-----
+* The parasyte path injection is handled by the OnionOS startup hook at
+  `boot/startup/mqttreporter.sh` — no extra config required.
+* FAT32 (Miyoo SD cards) does NOT preserve POSIX symlinks. `install.sh` uses
+  `rsync -aL` / `cp -RL` to dereference symlinks at copy time. If you populate
+  `lib/` manually, use real file copies (not `ln -s`).
+
+Licenses
+--------
+* Eclipse Mosquitto: EPL-2.0 / EDL-1.0 (both allow binary redistribution)
+* OpenSSL 1.1: dual-licensed under OpenSSL + SSLeay licenses (BSD-style)
