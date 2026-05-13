@@ -1,49 +1,82 @@
 #!/bin/sh
 # shellcheck shell=sh disable=SC1091
 
+_j_num() { [ -n "$1" ] && printf '%s' "$1" || printf 'null'; }
+_j_str() {
+    if [ -z "$1" ]; then
+        printf 'null'
+    else
+        # Escape backslashes and double quotes for valid JSON.
+        printf '"%s"' "$(printf '%s' "$1" | sed -e 's|\\|\\\\|g' -e 's|"|\\"|g')"
+    fi
+}
+
 # build_state_payload <battery_dir> <meminfo_path> <loadavg_path>
-# Echoes a compact JSON object combining all metrics.
-# Missing values are emitted as null.
+# Echoes a compact JSON object combining all metrics. Hardware-specific
+# readers (read_*_miyoo) are wired by the executed-directly bootstrap so
+# build_state_payload doesn't need to know whether it's running on the
+# device or against fixtures.
 build_state_payload() {
     local bat_dir="$1"
     local mem_path="$2"
     local load_path="$3"
 
-    local bat_raw
-    local ram_raw
-    local cpu_raw
-    local vol_raw
+    local bat_raw ram_raw cpu_raw vol_raw
+    local uptime_v temp_v cpufreq_v sdfree_v
+    local bright_v vbat_v ibat_v ip_v wifi_raw game_raw
 
-    bat_raw="$(read_battery "$bat_dir")"      # "<pct>|<bool>" or empty
-    ram_raw="$(read_ram "$mem_path")"         # "<pct>|<kb>"   or empty
-    cpu_raw="$(read_cpu "$load_path")"        # "<load>|<n>"   or empty
-    vol_raw="$(read_volume)"                  # "<pct>"        or empty
+    bat_raw="$(read_battery "$bat_dir")"
+    ram_raw="$(read_ram "$mem_path")"
+    cpu_raw="$(read_cpu "$load_path")"
+    vol_raw="$(read_volume)"
 
-    local bat_pct
-    local charging_bool
-    local charging_str
-    local ram_pct
-    local cpu_load
+    uptime_v="$(read_uptime /proc/uptime 2>/dev/null)"
+    temp_v="$(read_temperature /sys/class/thermal/thermal_zone0/temp 2>/dev/null)"
+    cpufreq_v="$(read_cpu_freq /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null)"
+    sdfree_v="$(read_sd_free /mnt/SDCARD 2>/dev/null)"
+
+    # Miyoo-only readers are no-ops on the dev host (commands absent).
+    if command -v read_brightness_miyoo >/dev/null 2>&1; then
+        bright_v="$(read_brightness_miyoo 2>/dev/null)"
+        vbat_v="$(read_battery_voltage_miyoo 2>/dev/null)"
+        ibat_v="$(read_battery_current_miyoo 2>/dev/null)"
+        ip_v="$(read_ip_miyoo 2>/dev/null)"
+        wifi_raw="$(read_wifi_link_miyoo 2>/dev/null)"
+        game_raw="$(read_running_game_miyoo 2>/dev/null)"
+    fi
+
+    local bat_pct charging_bool charging_str ram_pct cpu_load
+    local rssi ssid core game
 
     bat_pct="$(printf '%s' "$bat_raw" | awk -F'|' '{print $1}')"
     charging_bool="$(printf '%s' "$bat_raw" | awk -F'|' '{print $2}')"
-    if [ "$charging_bool" = "true" ]; then
-        charging_str="ON"
-    else
-        charging_str="OFF"
-    fi
-
+    if [ "$charging_bool" = "true" ]; then charging_str="ON"; else charging_str="OFF"; fi
     ram_pct="$(printf '%s' "$ram_raw" | awk -F'|' '{print $1}')"
     cpu_load="$(printf '%s' "$cpu_raw" | awk -F'|' '{print $1}')"
+    rssi="$(printf '%s' "$wifi_raw" | awk -F'|' '{print $1}')"
+    ssid="$(printf '%s' "$wifi_raw" | awk -F'|' '{print $2}')"
+    core="$(printf '%s' "$game_raw" | awk -F'|' '{print $1}')"
+    game="$(printf '%s' "$game_raw" | awk -F'|' '{print $2}')"
 
-    j_num() { [ -n "$1" ] && printf '%s' "$1" || printf 'null'; }
-
-    printf '{"battery":%s,"charging":"%s","volume":%s,"ram":%s,"cpu":%s}' \
-        "$(j_num "$bat_pct")" \
-        "$charging_str" \
-        "$(j_num "$vol_raw")" \
-        "$(j_num "$ram_pct")" \
-        "$(j_num "$cpu_load")"
+    printf '{'
+    printf '"battery":%s,'    "$(_j_num "$bat_pct")"
+    printf '"charging":"%s",' "$charging_str"
+    printf '"volume":%s,'     "$(_j_num "$vol_raw")"
+    printf '"ram":%s,'        "$(_j_num "$ram_pct")"
+    printf '"cpu":%s,'        "$(_j_num "$cpu_load")"
+    printf '"uptime":%s,'     "$(_j_num "$uptime_v")"
+    printf '"temperature":%s,' "$(_j_num "$temp_v")"
+    printf '"cpu_freq":%s,'   "$(_j_num "$cpufreq_v")"
+    printf '"sd_free":%s,'    "$(_j_num "$sdfree_v")"
+    printf '"brightness":%s,' "$(_j_num "$bright_v")"
+    printf '"vbat":%s,'       "$(_j_num "$vbat_v")"
+    printf '"ibat":%s,'       "$(_j_num "$ibat_v")"
+    printf '"wifi_rssi":%s,'  "$(_j_num "$rssi")"
+    printf '"wifi_ssid":%s,'  "$(_j_str "$ssid")"
+    printf '"ip":%s,'         "$(_j_str "$ip_v")"
+    printf '"core":%s,'       "$(_j_str "$core")"
+    printf '"game":%s'        "$(_j_str "$game")"
+    printf '}'
 }
 
 # Resolved at runtime by daemon_main.

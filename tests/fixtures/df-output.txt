@@ -1,0 +1,2 @@
+Filesystem           1K-blocks      Used Available Use% Mounted on
+/dev/mmcblk0p1        62308352  18432000  43876352  30% /mnt/SDCARD

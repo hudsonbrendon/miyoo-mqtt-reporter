@@ -26,7 +26,7 @@ testDeviceIdFallsBackWhenNoMac() {
     assertEquals "miyoominiplus" "$out"
 }
 
-testPublishDiscoveryEmitsFiveRetainedConfigs() {
+testPublishDiscoveryEmitsAllRetainedConfigs() {
     LIB="$SCRIPT_DIR/../App/MQTTReporter/scripts/lib.sh"
     . "$LIB"
     . "$DISC"
@@ -41,7 +41,8 @@ testPublishDiscoveryEmitsFiveRetainedConfigs() {
     unset DEVICE_ID
 
     cnt="$(wc -l < "$PUB_LOG" | tr -d ' ')"
-    assertEquals "5" "$cnt"
+    # 16 sensor + 1 binary_sensor = 17 retained discovery configs.
+    assertEquals "17" "$cnt"
 
     # All retained, qos=0
     while IFS='|' read -r topic _payload qos retain; do
@@ -52,6 +53,18 @@ testPublishDiscoveryEmitsFiveRetainedConfigs() {
             homeassistant/sensor/miyoo-test_volume/config) ;;
             homeassistant/sensor/miyoo-test_ram/config) ;;
             homeassistant/sensor/miyoo-test_cpu/config) ;;
+            homeassistant/sensor/miyoo-test_uptime/config) ;;
+            homeassistant/sensor/miyoo-test_temperature/config) ;;
+            homeassistant/sensor/miyoo-test_cpu_freq/config) ;;
+            homeassistant/sensor/miyoo-test_sd_free/config) ;;
+            homeassistant/sensor/miyoo-test_brightness/config) ;;
+            homeassistant/sensor/miyoo-test_vbat/config) ;;
+            homeassistant/sensor/miyoo-test_ibat/config) ;;
+            homeassistant/sensor/miyoo-test_wifi_rssi/config) ;;
+            homeassistant/sensor/miyoo-test_wifi_ssid/config) ;;
+            homeassistant/sensor/miyoo-test_ip/config) ;;
+            homeassistant/sensor/miyoo-test_core/config) ;;
+            homeassistant/sensor/miyoo-test_game/config) ;;
             homeassistant/binary_sensor/miyoo-test_charging/config) ;;
             *) fail "unexpected topic: $topic" ;;
         esac

@@ -31,13 +31,25 @@ them into a compact JSON message, and publishes to your MQTT broker. Home
 Assistant auto-creates five entities via **MQTT Discovery** — no
 `configuration.yaml` edits required.
 
-| Entity                 | Source on Miyoo                                | HA type         |
-| ---------------------- | ---------------------------------------------- | --------------- |
-| **Battery %**          | `/tmp/percBat` (written by Onion's `batmon`)   | `sensor`        |
-| **Charging on/off**    | `axp 0` register, bit `0x4`                    | `binary_sensor` |
-| **Volume %**           | `/tmp/live_vol` (real-time via `vol-watcher.sh`) | `sensor`      |
-| **RAM used %**         | `/proc/meminfo` (MemTotal vs MemAvailable)     | `sensor`        |
-| **CPU load (1 min)**   | `/proc/loadavg`                                | `sensor`        |
+| Entity                 | Source on Miyoo                                          | HA type         |
+| ---------------------- | -------------------------------------------------------- | --------------- |
+| **Battery %**          | `/tmp/percBat` (written by Onion's `batmon`)             | `sensor`        |
+| **Battery voltage**    | `axp` regs `78h:79h` × 1.1 mV                            | `sensor`        |
+| **Battery current**    | `axp` regs `7Ah-7Dh` (charge − discharge, 0.5 mA/LSB)    | `sensor`        |
+| **Charging on/off**    | `axp 0` register, bit `0x4`                              | `binary_sensor` |
+| **Volume %**           | `/tmp/live_vol` (real-time via `vol-watcher.sh`)         | `sensor`        |
+| **Brightness %**       | `system.json` key `brightness` (0-10 scaled to %)        | `sensor`        |
+| **RAM used %**         | `/proc/meminfo` (MemTotal vs MemAvailable)               | `sensor`        |
+| **CPU load (1 min)**   | `/proc/loadavg`                                          | `sensor`        |
+| **CPU frequency**      | `/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq`  | `sensor`        |
+| **Temperature**        | `/sys/class/thermal/thermal_zone0/temp`                  | `sensor`        |
+| **Uptime**             | `/proc/uptime`                                           | `sensor`        |
+| **SD free space**      | `df -k /mnt/SDCARD`                                      | `sensor`        |
+| **WiFi RSSI**          | `iw dev wlan0 link`                                      | `sensor`        |
+| **WiFi SSID**          | `iw dev wlan0 link`                                      | `sensor`        |
+| **IP address**         | `ip addr show wlan0`                                     | `sensor`        |
+| **Running game**       | `/tmp/cmd_to_run.sh` (parsed retroarch cmdline)          | `sensor`        |
+| **Emulator core**      | `/tmp/cmd_to_run.sh` (e.g. `mgba`, `snes9x`)             | `sensor`        |
 
 ```
                     ┌─────────────────────────────────────────┐
@@ -140,13 +152,25 @@ is **not committed** to git (`.gitignore` excludes it).
 
 | Topic                                                       | Retained | Payload                                                    |
 | ----------------------------------------------------------- | -------- | ---------------------------------------------------------- |
-| `miyoo/<device_id>/state`                                   | no       | `{"battery":90,"charging":"ON","volume":35,"ram":34,"cpu":4.72}` |
+| `miyoo/<device_id>/state`                                   | no       | full JSON — see below                                      |
 | `miyoo/<device_id>/availability`                            | yes      | `online` / `offline`                                       |
-| `homeassistant/sensor/<device_id>_battery/config`           | yes      | HA Discovery config                                        |
-| `homeassistant/sensor/<device_id>_volume/config`            | yes      | HA Discovery config                                        |
-| `homeassistant/sensor/<device_id>_ram/config`               | yes      | HA Discovery config                                        |
-| `homeassistant/sensor/<device_id>_cpu/config`               | yes      | HA Discovery config                                        |
+| `homeassistant/sensor/<device_id>_<obj>/config` × 16        | yes      | HA Discovery configs (one per sensor)                      |
 | `homeassistant/binary_sensor/<device_id>_charging/config`   | yes      | HA Discovery config                                        |
+
+State payload format (single JSON object per publish):
+
+```json
+{
+  "battery": 90, "charging": "ON", "volume": 35, "ram": 34, "cpu": 4.72,
+  "uptime": 1234, "temperature": 45, "cpu_freq": 1200, "sd_free": 42848,
+  "brightness": 70, "vbat": 4170, "ibat": -380,
+  "wifi_rssi": -57, "wifi_ssid": "MinhaWiFi", "ip": "192.168.31.123",
+  "core": "mgba", "game": "Pokemon FireRed"
+}
+```
+
+Missing values are emitted as `null` (numbers) or `null` (strings) — Home
+Assistant value templates handle this gracefully.
 
 ## Quirks
 

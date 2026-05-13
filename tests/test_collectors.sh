@@ -79,4 +79,81 @@ testDetectBatteryPathReturnsEmptyOnNoMatch() {
     rmdir "$tmp"
 }
 
+testReadUptimeReturnsIntegerSeconds() {
+    . "$COL"
+    out="$(read_uptime "$FIX/proc-uptime")"
+    # Fixture: "12345.67 9876.54" → 12345
+    assertEquals "12345" "$out"
+}
+
+testReadUptimeReturnsEmptyOnMissingFile() {
+    . "$COL"
+    out="$(read_uptime /no/such/file 2>/dev/null)"
+    assertEquals "" "$out"
+}
+
+testReadTemperatureScalesMillicelsiusToCelsius() {
+    . "$COL"
+    out="$(read_temperature "$FIX/thermal-zone0-temp")"
+    # Fixture: "45000" → 45
+    assertEquals "45" "$out"
+}
+
+testReadCpuFreqScalesKhzToMhz() {
+    . "$COL"
+    out="$(read_cpu_freq "$FIX/cpufreq-scaling-cur-freq")"
+    # Fixture: "1200000" kHz → 1200 MHz
+    assertEquals "1200" "$out"
+}
+
+testParseDfFreeExtractsAvailableMb() {
+    . "$COL"
+    out="$(parse_df_free < "$FIX/df-output.txt")"
+    # Fixture: Available=43876352 KB → 42848 MB
+    assertEquals "42848" "$out"
+}
+
+testParseAxpByteExtractsHex() {
+    . "$COL"
+    out="$(parse_axp_byte < "$FIX/axp-reg-78.txt")"
+    assertEquals "d5" "$out"
+}
+
+testParseAxpByteEmptyOnGarbage() {
+    . "$COL"
+    out="$(printf 'nothing here\n' | parse_axp_byte)"
+    assertEquals "" "$out"
+}
+
+testParseIwLinkRssiExtractsNegativeDbm() {
+    . "$COL"
+    out="$(parse_iw_link_rssi < "$FIX/iw-dev-link.txt")"
+    assertEquals "-57" "$out"
+}
+
+testParseIwLinkSsidExtractsName() {
+    . "$COL"
+    out="$(parse_iw_link_ssid < "$FIX/iw-dev-link.txt")"
+    assertEquals "MinhaWiFi" "$out"
+}
+
+testParseIpAddrInetExtractsIpv4() {
+    . "$COL"
+    out="$(parse_ip_addr_inet < "$FIX/ip-addr-wlan0.txt")"
+    assertEquals "192.168.31.123" "$out"
+}
+
+testParseRetroarchCmdExtractsCoreAndGame() {
+    . "$COL"
+    out="$(parse_retroarch_cmd < "$FIX/cmd-to-run-gba.sh")"
+    # Format: <core>|<rom_basename_no_ext>
+    assertEquals "mgba|Pokemon FireRed" "$out"
+}
+
+testParseRetroarchCmdEmptyOnNonRetroarchScript() {
+    . "$COL"
+    out="$(printf '#!/bin/sh\necho hello\n' | parse_retroarch_cmd)"
+    assertEquals "" "$out"
+}
+
 . "$SCRIPT_DIR/shunit2"

@@ -1,0 +1,11 @@
+Connected to aa:bb:cc:dd:ee:ff (on wlan0)
+	SSID: MinhaWiFi
+	freq: 2462
+	RX: 12345 bytes (123 packets)
+	TX: 6789 bytes (45 packets)
+	signal: -57 dBm
+	tx bitrate: 24.0 MBit/s
+
+	bss flags:	short-preamble short-slot-time
+	dtim period:	1
+	beacon int:	100
