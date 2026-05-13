@@ -145,7 +145,7 @@ testParseIpAddrInetExtractsIpv4() {
 
 testParseRetroarchCmdExtractsCoreAndGame() {
     . "$COL"
-    out="$(parse_retroarch_cmd < "$FIX/cmd-to-run-gba.sh")"
+    out="$(parse_retroarch_cmd < "$FIX/cmd-to-run-retroarch.sh")"
     # Format: <core>|<rom_basename_no_ext>
     assertEquals "mgba|Pokemon FireRed" "$out"
 }
