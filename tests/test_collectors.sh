@@ -182,25 +182,32 @@ testReadRunningGameMiyooReturnsEmptyWhenCmdFileAbsent() {
     assertEquals "" "$out"
 }
 
-testParseAxpTempPairComputesCelsius() {
+testScaleTempPassesThroughDirectCelsius() {
     . "$COL"
-    out="$(parse_axp_temp < "$FIX/axp-temp-pair.txt")"
-    # 0x70<<4 | 0x05&0x0F = 1797, * 0.1 - 144.7 = 35
-    assertEquals "35" "$out"
+    assertEquals "35" "$(scale_temp 35)"
 }
 
-testParseAxpTempEmptyOnGarbage() {
+testScaleTempScalesMillicelsius() {
     . "$COL"
-    out="$(printf 'nothing here\n' | parse_axp_temp)"
+    assertEquals "42" "$(scale_temp 42500)"
+}
+
+testScaleTempEmptyOnGarbage() {
+    . "$COL"
+    out="$(scale_temp 'not-a-number' 2>/dev/null)"
     assertEquals "" "$out"
 }
 
-testParseAxpTempEmptyWhenAdcReturnsZero() {
+testScaleTempEmptyOnEmptyInput() {
     . "$COL"
-    # AXP223 temperature ADC may be disabled on Miyoo — both regs read 0.
-    # We must return empty (Unknown in HA), not the formula floor of -144 °C.
-    out="$(printf 'Read /dev/i2c-1-34 reg 5e, read value:0\nRead /dev/i2c-1-34 reg 5f, read value:0\n' | parse_axp_temp)"
+    out="$(scale_temp '' 2>/dev/null)"
     assertEquals "" "$out"
+}
+
+testScaleTempAllowsNegative() {
+    . "$COL"
+    # Negative direct °C should pass through.
+    assertEquals "-5" "$(scale_temp -5)"
 }
 
 . "$SCRIPT_DIR/shunit2"

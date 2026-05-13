@@ -297,27 +297,32 @@ read_running_game_miyoo() {
     parse_onion_cmd < "$f"
 }
 
-# parse_axp_temp
-# Reads two `axp` register dumps from stdin (line 1 = hi byte for reg 5Eh,
-# line 2 = lo byte for reg 5Fh). Echoes integer °C, empty on parse failure.
-# Formula: temp_°C = ((hi << 4) | (lo & 0x0F)) * 0.1 - 144.7
-parse_axp_temp() {
-    local input hi lo raw
-    input="$(cat)"
-    hi="$(printf '%s\n' "$input" | sed -n '1s/.*read value:\([0-9a-fA-F][0-9a-fA-F]*\).*/\1/p')"
-    lo="$(printf '%s\n' "$input" | sed -n '2s/.*read value:\([0-9a-fA-F][0-9a-fA-F]*\).*/\1/p')"
-    [ -n "$hi" ] && [ -n "$lo" ] || return 0
-    raw=$(( (0x${hi} << 4) | (0x${lo} & 0x0F) ))
-    # raw == 0 means the AXP temperature ADC is not sampling on this device —
-    # emit empty so HA shows "Unknown" instead of the formula floor of -144 °C.
-    [ "$raw" -eq 0 ] && return 0
-    awk -v r="$raw" 'BEGIN { printf "%d", r * 0.1 - 144.7 }'
+# scale_temp <raw_int>
+# Echoes integer °C, auto-detecting the source unit:
+#   - raw > 200 → millicelsius (Linux thermal_zone convention) — divide by 1000
+#   - else      → already °C
+# Empty when input isn't a valid (possibly negative) integer.
+scale_temp() {
+    case "$1" in
+        ''|*[!0-9-]*) return 0 ;;
+        *) ;;
+    esac
+    if [ "$1" -gt 200 ]; then
+        printf '%d' $(($1 / 1000))
+    else
+        printf '%d' "$1"
+    fi
 }
 
 # read_temperature_miyoo
-# Echoes AXP223 die temperature in integer °C. Empty if `axp` is absent
-# or either register read fails.
+# Miyoo Mini Plus is Sigmastar SSD202D (NOT Allwinner V3s — `/proc/cpuinfo`
+# says "SStar Soc"). The SoC exposes its temperature at
+# `/sys/devices/system/cpu/cpufreq/temp_out`. The unit varies by kernel
+# build — scale_temp auto-detects millicelsius vs direct °C.
 read_temperature_miyoo() {
-    command -v axp >/dev/null 2>&1 || return 0
-    { axp 5E 2>/dev/null; axp 5F 2>/dev/null; } | parse_axp_temp
+    local f=/sys/devices/system/cpu/cpufreq/temp_out
+    [ -r "$f" ] || return 0
+    local v
+    v="$(head -1 "$f" 2>/dev/null)"
+    scale_temp "$v"
 }

@@ -158,7 +158,7 @@ if [ "${0##*/}" = "daemon.sh" ]; then
     if [ -r /tmp/percBat ]; then
         read_battery() { read_battery_miyoo; }
     fi
-    if command -v axp >/dev/null 2>&1; then
+    if [ -r /sys/devices/system/cpu/cpufreq/temp_out ]; then
         # shellcheck disable=SC2317
         read_temperature() { read_temperature_miyoo; }
     fi
