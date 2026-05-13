@@ -103,19 +103,10 @@ read_battery_miyoo() {
 # read_volume_miyoo
 # Prefers /tmp/live_vol (real-time from vol-watcher.sh), falls back to
 # Onion's config/system/<uuid>.json (only persisted on power-off / menu nav).
-# Scale 0-20 → 0-100. mute=1 forces 0 (read from system.json, stale).
+# Scale 0-20 → 0-100. Mute state is reported via its own binary sensor —
+# this reader returns the actual volume level even when muted.
 read_volume_miyoo() {
-    local cfg mute vol
-    # Mute is only available from the (stale) system.json — accept that.
-    for cfg in /mnt/SDCARD/.tmp_update/config/system/*.json; do
-        [ -r "$cfg" ] || continue
-        mute="$(sed -n 's/.*"mute":[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$cfg" | head -1)"
-        break
-    done
-    if [ "$mute" = "1" ]; then
-        printf '0'
-        return 0
-    fi
+    local cfg vol
     if [ -r /tmp/live_vol ]; then
         vol="$(cat /tmp/live_vol)"
         [ -n "$vol" ] || return 0
@@ -393,12 +384,13 @@ read_ntp_synced_miyoo() {
 # read_theme_miyoo
 # Echoes the basename of the theme path in system.json.
 read_theme_miyoo() {
-    local cfg theme
+    local cfg path
     for cfg in /mnt/SDCARD/.tmp_update/config/system/*.json; do
         [ -r "$cfg" ] || continue
-        # theme value is a path like /mnt/SDCARD/Themes/<name>/ — extract <name>
-        theme="$(sed -n 's|.*"theme":[[:space:]]*"[^"]*/\([^/"]*\)/*"|\1|p' "$cfg" | head -1)"
-        printf '%s' "$theme"
+        # Capture the full quoted value first, then strip path + trailing slash.
+        path="$(sed -n 's|.*"theme":[[:space:]]*"\([^"]*\)".*|\1|p' "$cfg" | head -1)"
+        path="${path%/}"
+        printf '%s' "${path##*/}"
         return 0
     done
 }
