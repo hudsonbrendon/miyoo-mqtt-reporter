@@ -149,6 +149,12 @@ testParseOnionCmdRetroarchFormatExtractsCoreAndGame() {
     assertEquals "mgba|Pokemon FireRed" "$out"
 }
 
+testParseOnionCmdRetroarchCoreWithUnderscoresInName() {
+    . "$COL"
+    out="$(printf 'retroarch -L /usr/lib/cores/pcsx_rearmed_libretro.so "/mnt/SDCARD/Roms/PSX/Castlevania SOTN.chd"\n' | parse_onion_cmd)"
+    assertEquals "pcsx_rearmed|Castlevania SOTN" "$out"
+}
+
 testParseOnionCmdEmuLauncherFormatExtractsCoreAndGame() {
     . "$COL"
     out="$(parse_onion_cmd < "$FIX/cmd-to-run-onion-gg.sh")"

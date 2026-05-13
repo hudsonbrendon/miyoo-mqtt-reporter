@@ -205,7 +205,7 @@ parse_onion_cmd() {
     [ -n "$line" ] || return 0
 
     # RetroArch core name comes from `<dir>/<core>_libretro.so`
-    core="$(printf '%s' "$line" | sed -n 's|.*/\([^/_ ]*\)_libretro\.so.*|\1|p' | head -1)"
+    core="$(printf '%s' "$line" | sed -n 's|.*/\([^/]*\)_libretro\.so.*|\1|p' | head -1)"
     # Onion Emu launcher core comes from `/mnt/SDCARD/Emu/<CORE>/launch.sh`
     if [ -z "$core" ]; then
         core="$(printf '%s' "$line" | sed -n 's|.*/Emu/\([^/]*\)/launch\.sh.*|\1|p' | head -1)"
