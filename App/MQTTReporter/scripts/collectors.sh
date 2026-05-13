@@ -684,3 +684,63 @@ read_save_state_count_miyoo() {
 read_sd_usage_pct_miyoo() {
     df /mnt/SDCARD 2>/dev/null | awk 'NR==2 { sub(/%$/, "", $5); print $5 }'
 }
+
+# read_meminfo_field <meminfo_path> <key>
+# Used for Cached / Buffers / etc — same pattern as the awk in read_ram.
+read_meminfo_field() {
+    local f="$1" k="$2"
+    [ -r "$f" ] || return 0
+    awk -v key="^${k}:" '$0 ~ key { print $2; exit }' "$f"
+}
+
+# Count immediate subdirectories — apps, emulators, themes.
+_count_subdirs() {
+    [ -d "$1" ] || return 0
+    find "$1" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l | tr -d ' '
+}
+read_apps_count_miyoo()       { _count_subdirs /mnt/SDCARD/App; }
+read_emulators_count_miyoo()  { _count_subdirs /mnt/SDCARD/Emu; }
+read_themes_count_miyoo()     { _count_subdirs /mnt/SDCARD/Themes; }
+
+# read_saves_count_miyoo — total files in /Saves.
+read_saves_count_miyoo() {
+    [ -d /mnt/SDCARD/Saves ] || return 0
+    find /mnt/SDCARD/Saves -type f 2>/dev/null | wc -l | tr -d ' '
+}
+
+# read_saves_size_kb_miyoo — size of /Saves in kB.
+read_saves_size_kb_miyoo() {
+    [ -d /mnt/SDCARD/Saves ] || return 0
+    du -sk /mnt/SDCARD/Saves 2>/dev/null | awk '{ print $1 }'
+}
+
+# parse_diskstat_field <fld>
+# Reads /proc/diskstats from stdin, picks mmcblk0 row, echoes given column.
+# Columns (1-indexed in awk after major/minor/name):
+#   4 reads completed, 5 reads merged, 6 sectors read, 7 ms reading,
+#   8 writes completed, 9 writes merged, 10 sectors written, ...
+parse_diskstat_field() {
+    awk -v c="$1" '$3 == "mmcblk0" { print $(c); exit }'
+}
+
+read_disk_read_sectors() {
+    [ -r /proc/diskstats ] || return 0
+    parse_diskstat_field 6 < /proc/diskstats
+}
+
+read_disk_write_sectors() {
+    [ -r /proc/diskstats ] || return 0
+    parse_diskstat_field 10 < /proc/diskstats
+}
+
+# read_session_duration_miyoo — seconds since cmd_to_run.sh was written.
+# When in MODE=game, this equals the current play session length. Empty when
+# no game is active (cmd_to_run.sh absent).
+read_session_duration_miyoo() {
+    local f=/mnt/SDCARD/.tmp_update/cmd_to_run.sh now mtime
+    [ -e "$f" ] || return 0
+    mtime="$(stat -c %Y "$f" 2>/dev/null)"
+    now="$(date +%s)"
+    [ -n "$mtime" ] && [ -n "$now" ] || return 0
+    printf '%d' $((now - mtime))
+}

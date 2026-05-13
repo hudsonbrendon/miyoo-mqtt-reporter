@@ -30,6 +30,7 @@ build_state_payload() {
     local blf bgm_mute autostart bat_warn cpuhk
     local pt_total pt_today most_played last_played gcount
     local onion_v cores mem_kb pcount rx tx wquality wfreq wbssid dns sscount sdpct
+    local mem_cached mem_buffers disk_r disk_w apps_c emu_c themes_c saves_n saves_kb session_s
 
     bat_raw="$(read_battery "$bat_dir")"
     ram_raw="$(read_ram "$mem_path")"
@@ -58,6 +59,10 @@ build_state_payload() {
     tx="$(read_wifi_tx_bytes 2>/dev/null)"
     wquality="$(read_wifi_quality 2>/dev/null)"
     dns="$(read_dns_server 2>/dev/null)"
+    mem_cached="$(read_meminfo_field "$mem_path" Cached 2>/dev/null)"
+    mem_buffers="$(read_meminfo_field "$mem_path" Buffers 2>/dev/null)"
+    disk_r="$(read_disk_read_sectors 2>/dev/null)"
+    disk_w="$(read_disk_write_sectors 2>/dev/null)"
 
     # Miyoo-only readers are no-ops on the dev host (commands absent).
     if command -v read_brightness_miyoo >/dev/null 2>&1; then
@@ -96,6 +101,12 @@ build_state_payload() {
         wbssid="$(read_wifi_bssid_miyoo 2>/dev/null)"
         sscount="$(read_save_state_count_miyoo 2>/dev/null)"
         sdpct="$(read_sd_usage_pct_miyoo 2>/dev/null)"
+        apps_c="$(read_apps_count_miyoo 2>/dev/null)"
+        emu_c="$(read_emulators_count_miyoo 2>/dev/null)"
+        themes_c="$(read_themes_count_miyoo 2>/dev/null)"
+        saves_n="$(read_saves_count_miyoo 2>/dev/null)"
+        saves_kb="$(read_saves_size_kb_miyoo 2>/dev/null)"
+        session_s="$(read_session_duration_miyoo 2>/dev/null)"
     fi
 
     local bat_pct charging_bool charging_str ram_pct cpu_load
@@ -174,7 +185,17 @@ build_state_payload() {
     printf '"wifi_bssid":%s,' "$(_j_str "$wbssid")"
     printf '"dns_server":%s,' "$(_j_str "$dns")"
     printf '"save_state_count":%s,' "$(_j_num "$sscount")"
-    printf '"sd_usage_pct":%s' "$(_j_num "$sdpct")"
+    printf '"sd_usage_pct":%s,' "$(_j_num "$sdpct")"
+    printf '"mem_cached_kb":%s,' "$(_j_num "$mem_cached")"
+    printf '"mem_buffers_kb":%s,' "$(_j_num "$mem_buffers")"
+    printf '"disk_read_sectors":%s,' "$(_j_num "$disk_r")"
+    printf '"disk_write_sectors":%s,' "$(_j_num "$disk_w")"
+    printf '"apps_count":%s,' "$(_j_num "$apps_c")"
+    printf '"emulators_count":%s,' "$(_j_num "$emu_c")"
+    printf '"themes_count":%s,' "$(_j_num "$themes_c")"
+    printf '"saves_count":%s,' "$(_j_num "$saves_n")"
+    printf '"saves_size_kb":%s,' "$(_j_num "$saves_kb")"
+    printf '"session_duration_sec":%s' "$(_j_num "$session_s")"
     printf '}'
 }
 
