@@ -174,4 +174,12 @@ testParseOnionCmdHandlesRomWithSpaces() {
     assertEquals "PSX|Final Fantasy VII" "$out"
 }
 
+testReadRunningGameMiyooReturnsEmptyWhenCmdFileAbsent() {
+    . "$COL"
+    # The function reads a hardcoded device path. On the dev host that path
+    # does not exist, so the function must return empty silently.
+    out="$(read_running_game_miyoo 2>/dev/null)"
+    assertEquals "" "$out"
+}
+
 . "$SCRIPT_DIR/shunit2"

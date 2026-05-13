@@ -287,10 +287,11 @@ read_ip_miyoo() {
 }
 
 # read_running_game_miyoo
-# Reads /tmp/cmd_to_run.sh (Onion writes it when launching a ROM).
-# Echoes "<core>|<rom_basename>". Empty when no game is running.
+# Onion writes /mnt/SDCARD/.tmp_update/cmd_to_run.sh whenever it launches a
+# ROM (retroarch direct or per-emulator launcher). Format is handled by
+# parse_onion_cmd. Echoes "<core>|<rom_basename>" or empty.
 read_running_game_miyoo() {
-    local f=/tmp/cmd_to_run.sh
+    local f=/mnt/SDCARD/.tmp_update/cmd_to_run.sh
     [ -r "$f" ] || return 0
-    parse_retroarch_cmd < "$f"
+    parse_onion_cmd < "$f"
 }
