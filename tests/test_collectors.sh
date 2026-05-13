@@ -182,4 +182,17 @@ testReadRunningGameMiyooReturnsEmptyWhenCmdFileAbsent() {
     assertEquals "" "$out"
 }
 
+testParseAxpTempPairComputesCelsius() {
+    . "$COL"
+    out="$(parse_axp_temp < "$FIX/axp-temp-pair.txt")"
+    # 0x70<<4 | 0x05&0x0F = 1797, * 0.1 - 144.7 = 35
+    assertEquals "35" "$out"
+}
+
+testParseAxpTempEmptyOnGarbage() {
+    . "$COL"
+    out="$(printf 'nothing here\n' | parse_axp_temp)"
+    assertEquals "" "$out"
+}
+
 . "$SCRIPT_DIR/shunit2"

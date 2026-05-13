@@ -295,3 +295,25 @@ read_running_game_miyoo() {
     [ -r "$f" ] || return 0
     parse_onion_cmd < "$f"
 }
+
+# parse_axp_temp
+# Reads two `axp` register dumps from stdin (line 1 = hi byte for reg 5Eh,
+# line 2 = lo byte for reg 5Fh). Echoes integer °C, empty on parse failure.
+# Formula: temp_°C = ((hi << 4) | (lo & 0x0F)) * 0.1 - 144.7
+parse_axp_temp() {
+    local input hi lo raw
+    input="$(cat)"
+    hi="$(printf '%s\n' "$input" | sed -n '1s/.*read value:\([0-9a-fA-F][0-9a-fA-F]*\).*/\1/p')"
+    lo="$(printf '%s\n' "$input" | sed -n '2s/.*read value:\([0-9a-fA-F][0-9a-fA-F]*\).*/\1/p')"
+    [ -n "$hi" ] && [ -n "$lo" ] || return 0
+    raw=$(( (0x${hi} << 4) | (0x${lo} & 0x0F) ))
+    awk -v r="$raw" 'BEGIN { printf "%d", r * 0.1 - 144.7 }'
+}
+
+# read_temperature_miyoo
+# Echoes AXP223 die temperature in integer °C. Empty if `axp` is absent
+# or either register read fails.
+read_temperature_miyoo() {
+    command -v axp >/dev/null 2>&1 || return 0
+    { axp 5E 2>/dev/null; axp 5F 2>/dev/null; } | parse_axp_temp
+}
