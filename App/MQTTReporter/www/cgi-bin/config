@@ -13,19 +13,30 @@ NL='
 CR=$(printf '\r')
 
 # ── url-decode helper ───────────────────────────────────────────────────────
+# Portable to busybox awk + BSD awk: builds a hex lookup table instead of
+# relying on the gawk-only strtonum().
 url_decode() {
     awk -v s="$1" 'BEGIN{
-        gsub(/\+/," ",s);
-        out=""; n=length(s); i=1;
-        while(i<=n){
-            c=substr(s,i,1);
-            if(c=="%" && i+2<=n){
-                h=substr(s,i+1,2);
-                out = out sprintf("%c", strtonum("0x" h));
-                i+=3;
-            } else { out=out c; i++; }
+        for (k=0; k<16; k++) hex[sprintf("%X", k)] = k
+        # Allow lower-case hex digits too
+        for (k=10; k<16; k++) hex[sprintf("%x", k)] = k
+        gsub(/\+/, " ", s)
+        out = ""; n = length(s); i = 1
+        while (i <= n) {
+            c = substr(s, i, 1)
+            if (c == "%" && i + 2 <= n) {
+                h1 = substr(s, i+1, 1)
+                h2 = substr(s, i+2, 1)
+                if (h1 in hex && h2 in hex) {
+                    out = out sprintf("%c", hex[h1] * 16 + hex[h2])
+                    i += 3
+                    continue
+                }
+            }
+            out = out c
+            i++
         }
-        print out;
+        print out
     }'
 }
 
