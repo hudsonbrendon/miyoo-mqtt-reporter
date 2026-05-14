@@ -3,14 +3,17 @@
 set -u
 
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+PARASYTE="/mnt/SDCARD/.tmp_update/lib/parasyte"
 PATH="$APP_DIR/bin:$PATH"
-LD_LIBRARY_PATH="$APP_DIR/lib:${LD_LIBRARY_PATH:-}"
-export PATH LD_LIBRARY_PATH
+LD_LIBRARY_PATH="$PARASYTE:$APP_DIR/lib:${LD_LIBRARY_PATH:-}"
+export PATH LD_LIBRARY_PATH APP_DIR
 . "$APP_DIR/scripts/toggle.sh"
 
 INFO_PANEL="/mnt/SDCARD/.tmp_update/bin/infoPanel"
+QRENCODE="$APP_DIR/bin/qrencode"
 STATUS_FILE="/tmp/mqttreporter/status.json"
 PORT="${HTTPD_PORT:-8088}"
+QR_PNG="/tmp/mqttreporter-qr.png"
 
 # Read a flat JSON value by key — small enough to do with sed.
 _jread() {
@@ -29,26 +32,19 @@ _age_seconds() {
     printf '%s' $(( now - $1 ))
 }
 
-# Ensure config exists; if not, copy template and inform the user.
+# First-run: bootstrap mqtt.conf from the example.
 if [ ! -r "$APP_DIR/etc/mqtt.conf" ]; then
     cp "$APP_DIR/etc/mqtt.conf.example" "$APP_DIR/etc/mqtt.conf"
-    msg="Created etc/mqtt.conf from template. Open http://<device-ip>:$PORT to configure."
-    if [ -x "$INFO_PANEL" ]; then
-        "$INFO_PANEL" --title "MQTT Reporter" --message "$msg" --auto >/dev/null 2>&1 || true
-    else
-        printf '%s\n' "$msg"
-        sleep 2
-    fi
-    exit 0
 fi
+
+ip="$(_jread ip)"
+[ -z "$ip" ] && ip="$(_my_ip)"
+[ -z "$ip" ] && ip="(no wifi)"
 
 state="$(do_status)"
 broker_ok="$(_jread broker_ok)"
 last_epoch="$(_jread last_publish_epoch)"
 device_id="$(_jread device_id)"
-ip="$(_jread ip)"
-[ -z "$ip" ] && ip="$(_my_ip)"
-[ -z "$ip" ] && ip="(no wifi)"
 
 case "$broker_ok" in
     true)  broker_label="connected" ;;
@@ -68,18 +64,32 @@ else
     run_label="OFF"
 fi
 
-msg="Status: $run_label
-Broker: $broker_label   (last $last_label)
+URL="http://$ip:$PORT"
+
+# Generate a QR code for the config URL. Keep small enough to fit on the
+# Mini Plus's 640×480 screen alongside the message text.
+qr_arg=""
+if [ "$ip" != "(no wifi)" ] && [ -x "$QRENCODE" ]; then
+    if "$QRENCODE" -o "$QR_PNG" -s 6 -m 2 -l M "$URL" >/dev/null 2>&1; then
+        qr_arg="--image $QR_PNG"
+    fi
+fi
+
+msg="Daemon: $run_label   Broker: $broker_label
+Last publish: $last_label
 Device id: ${device_id:-?}
 
-Open from any phone on the same Wi-Fi:
-  http://$ip:$PORT
+Open on your phone (same Wi-Fi):
 
-Configure broker, toggle ON/OFF, and see live status from there."
+   $URL
+
+Scan the QR with your phone camera, or type
+the URL above. Press B to close."
 
 if [ -x "$INFO_PANEL" ]; then
-    "$INFO_PANEL" --title "MQTT Reporter" --message "$msg" --auto >/dev/null 2>&1 || true
+    # shellcheck disable=SC2086
+    "$INFO_PANEL" --title "MQTT Reporter" --message "$msg" --persistent $qr_arg >/dev/null 2>&1 || true
 else
     printf '%s\n' "$msg"
-    sleep 4
+    sleep 6
 fi

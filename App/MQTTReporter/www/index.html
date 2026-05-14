@@ -4,82 +4,206 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MQTT Reporter — Miyoo Mini Plus</title>
-  <link rel="stylesheet" href="/style.css?v=2">
+  <link rel="stylesheet" href="/style.css?v=3">
 </head>
 <body>
-  <header>
-    <h1>MQTT Reporter</h1>
-    <p class="sub">Miyoo Mini Plus &middot; OnionOS</p>
-  </header>
-
-  <section id="status-card" class="card">
-    <h2>Status</h2>
-    <div class="status-grid">
-      <div><span class="label">Daemon</span> <span id="s-running">…</span></div>
-      <div><span class="label">Broker</span> <span id="s-broker">…</span></div>
-      <div><span class="label">Last publish</span> <span id="s-last">…</span></div>
-      <div><span class="label">Entities</span> <span id="s-entities">…</span></div>
-      <div><span class="label">Device id</span> <span id="s-devid">…</span></div>
-      <div><span class="label">IP</span> <span id="s-ip">…</span></div>
-    </div>
-    <div class="toggle-row">
-      <button id="btn-toggle" type="button">Toggle daemon</button>
-      <span id="toggle-feedback"></span>
-    </div>
-  </section>
-
-  <section class="card">
-    <h2>Published entities</h2>
-    <p class="muted small">
-      Choose which entities to publish to MQTT. Unchecked entities are
-      removed from Home Assistant on next save. Saving restarts the
-      daemon.
-    </p>
-    <div class="entities-toolbar">
-      <button type="button" id="ent-all">All</button>
-      <button type="button" id="ent-none">None</button>
-      <input type="search" id="ent-filter" placeholder="filter…">
-    </div>
-    <form id="entities-form" action="/cgi-bin/entities" method="post">
-      <div class="entities-grid" id="entities-grid">
-        <p class="muted">Loading…</p>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3" y="2" width="18" height="20" rx="4" stroke="currentColor" stroke-width="1.6"/>
+            <rect x="6" y="5" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4" fill="none"/>
+            <circle cx="9" cy="18" r="1.2" fill="currentColor"/>
+            <circle cx="15" cy="18" r="1.2" fill="currentColor"/>
+          </svg>
+        </div>
+        <div>
+          <h1>MQTT Reporter</h1>
+          <span class="brand-sub">Miyoo Mini Plus · OnionOS</span>
+        </div>
       </div>
-      <button type="submit">Save entities &amp; restart</button>
-    </form>
-  </section>
 
-  <section class="card">
-    <h2>Configuration</h2>
-    <form action="/cgi-bin/config" method="post" autocomplete="off">
-      <label>MQTT host
-        <input name="MQTT_HOST" id="f-host" required pattern="[A-Za-z0-9._\-]+" placeholder="192.168.1.10">
-      </label>
-      <label>MQTT port
-        <input name="MQTT_PORT" id="f-port" type="number" min="1" max="65535" value="1883">
-      </label>
-      <label>MQTT username
-        <input name="MQTT_USER" id="f-user" placeholder="(empty for anonymous)">
-      </label>
-      <label>MQTT password
-        <input name="MQTT_PASS" id="f-pass" type="password" placeholder="(empty for anonymous)">
-      </label>
-      <label>Publish interval (seconds)
-        <input name="INTERVAL" id="f-interval" type="number" min="2" max="3600" value="10">
-      </label>
-      <label>Device id (HA prefix)
-        <input name="DEVICE_ID" id="f-devid" pattern="[a-z0-9_\-]+" value="miyoominiplus" required>
-      </label>
-      <label>MQTT keepalive (s)
-        <input name="KEEPALIVE" id="f-keepalive" type="number" min="10" max="3600" value="60">
-      </label>
-      <button type="submit">Save &amp; restart daemon</button>
-    </form>
-  </section>
+      <div class="topbar-actions">
+        <div class="pill" id="hero-pill">
+          <span class="dot" id="hero-dot"></span>
+          <span id="hero-label">connecting…</span>
+        </div>
+        <button class="ghost-btn" id="hero-toggle" type="button" title="Toggle daemon">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v8M6 7a8 8 0 1 0 12 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>Toggle</span>
+        </button>
+      </div>
+    </header>
 
-  <footer>
-    <p>Open-source &middot; <a href="https://github.com/hudsonbrendon/miyoo-mqtt-reporter">github.com/hudsonbrendon/miyoo-mqtt-reporter</a></p>
-  </footer>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="overview" role="tab" aria-selected="true">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 13l9-9 9 9M5 11v9h14v-9" stroke="currentColor" stroke-width="1.6"/></svg>
+        Overview
+      </button>
+      <button class="tab" data-tab="entities" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="4" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="13" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="13" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/></svg>
+        Entities
+        <span class="tab-badge" id="ent-badge">—</span>
+      </button>
+      <button class="tab" data-tab="settings" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" stroke="currentColor" stroke-width="1.6"/></svg>
+        Settings
+      </button>
+    </nav>
 
-  <script src="/app.js?v=2"></script>
+    <main>
+      <!-- ── Overview ───────────────────────────────────────────────── -->
+      <section class="panel active" id="panel-overview" role="tabpanel">
+        <div class="kpi-grid">
+          <article class="kpi-card kpi-broker">
+            <header><span>Broker</span><span class="status-dot" id="kpi-broker-dot"></span></header>
+            <strong id="kpi-broker">—</strong>
+            <span class="kpi-sub" id="kpi-broker-sub">checking…</span>
+          </article>
+
+          <article class="kpi-card">
+            <header><span>Last publish</span></header>
+            <strong id="kpi-last">—</strong>
+            <span class="kpi-sub">interval: <span id="kpi-interval">?</span>s</span>
+          </article>
+
+          <article class="kpi-card">
+            <header><span>Entities active</span></header>
+            <strong id="kpi-entities">—</strong>
+            <span class="kpi-sub">published via Discovery</span>
+          </article>
+
+          <article class="kpi-card">
+            <header><span>Device id</span></header>
+            <strong id="kpi-devid">—</strong>
+            <span class="kpi-sub" id="kpi-ip">—</span>
+          </article>
+        </div>
+
+        <article class="hero-card">
+          <h2>Daemon</h2>
+          <p class="muted">The publishing loop runs in the background and pushes a state JSON every interval. Toggle it off temporarily without touching the autostart flag.</p>
+          <div class="hero-cta">
+            <span class="pill big" id="overview-pill">
+              <span class="dot" id="overview-dot"></span>
+              <span id="overview-label">—</span>
+            </span>
+            <button class="primary-btn" id="overview-toggle" type="button">Toggle daemon</button>
+          </div>
+        </article>
+      </section>
+
+      <!-- ── Entities ───────────────────────────────────────────────── -->
+      <section class="panel" id="panel-entities" role="tabpanel" hidden>
+        <header class="panel-header">
+          <div>
+            <h2>Published entities</h2>
+            <p class="muted">Uncheck what you don't want. Removed items disappear from Home Assistant on save.</p>
+          </div>
+          <div class="entities-actions">
+            <button class="ghost-btn" type="button" id="ent-all">Select all</button>
+            <button class="ghost-btn" type="button" id="ent-none">Clear all</button>
+          </div>
+        </header>
+
+        <div class="entities-search">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <input type="search" id="ent-filter" placeholder="Search entities…" autocomplete="off">
+        </div>
+
+        <form id="entities-form" action="/cgi-bin/entities" method="post">
+          <div id="entities-groups">
+            <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+            <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+            <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+          </div>
+
+          <footer class="save-bar">
+            <div class="save-bar-info">
+              <span id="ent-summary" class="muted">— enabled</span>
+            </div>
+            <div class="save-bar-actions">
+              <button class="ghost-btn" type="button" id="ent-reset">Reset</button>
+              <button class="primary-btn" type="submit">Save &amp; restart daemon</button>
+            </div>
+          </footer>
+        </form>
+      </section>
+
+      <!-- ── Settings ──────────────────────────────────────────────── -->
+      <section class="panel" id="panel-settings" role="tabpanel" hidden>
+        <header class="panel-header">
+          <div>
+            <h2>Broker &amp; daemon</h2>
+            <p class="muted">Edits are written to <code>etc/mqtt.conf</code> on the SD card. The daemon restarts automatically on save.</p>
+          </div>
+        </header>
+
+        <form action="/cgi-bin/config" method="post" autocomplete="off" id="config-form">
+          <fieldset>
+            <legend>MQTT broker</legend>
+            <div class="form-grid">
+              <label class="field">
+                <span class="field-label">Host</span>
+                <input name="MQTT_HOST" id="f-host" required pattern="[A-Za-z0-9._\-]+" placeholder="192.168.1.10">
+                <span class="field-help">LAN IP — mDNS / <code>.local</code> won't resolve on the Miyoo.</span>
+              </label>
+              <label class="field">
+                <span class="field-label">Port</span>
+                <input name="MQTT_PORT" id="f-port" type="number" min="1" max="65535" value="1883">
+              </label>
+              <label class="field">
+                <span class="field-label">Username</span>
+                <input name="MQTT_USER" id="f-user" placeholder="(empty for anonymous)">
+              </label>
+              <label class="field">
+                <span class="field-label">Password</span>
+                <input name="MQTT_PASS" id="f-pass" type="password" placeholder="(empty for anonymous)">
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Daemon</legend>
+            <div class="form-grid">
+              <label class="field">
+                <span class="field-label">Publish interval</span>
+                <input name="INTERVAL" id="f-interval" type="number" min="2" max="3600" value="10">
+                <span class="field-help">seconds between state publishes</span>
+              </label>
+              <label class="field">
+                <span class="field-label">Device id (HA prefix)</span>
+                <input name="DEVICE_ID" id="f-devid" pattern="[A-Za-z0-9_.\-]+" value="miyoominiplus" required>
+                <span class="field-help">used in topic <code>miyoo/&lt;id&gt;/state</code></span>
+              </label>
+              <label class="field">
+                <span class="field-label">MQTT keepalive</span>
+                <input name="KEEPALIVE" id="f-keepalive" type="number" min="10" max="3600" value="60">
+              </label>
+            </div>
+          </fieldset>
+
+          <footer class="save-bar">
+            <div class="save-bar-info"></div>
+            <div class="save-bar-actions">
+              <button class="primary-btn" type="submit">Save &amp; restart daemon</button>
+            </div>
+          </footer>
+        </form>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <span>POSIX shell · open-source</span>
+      <a href="https://github.com/hudsonbrendon/miyoo-mqtt-reporter" target="_blank" rel="noopener">
+        github.com/hudsonbrendon/miyoo-mqtt-reporter
+      </a>
+    </footer>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script src="/app.js?v=3"></script>
 </body>
 </html>
