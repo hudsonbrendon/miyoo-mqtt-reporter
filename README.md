@@ -151,48 +151,57 @@ The card auto-resolves all entity ids from the `DEVICE_ID` prefix you set in
 - POSIX `sh`, `shellcheck`, `mosquitto` + `mosquitto-clients` for integration tests
 - `rsync` recommended for `install.sh`
 
-## On-device web config UI
-
-After installation the daemon serves a tiny HTTP config UI on **port 8088**.
-Open the **MQTT Reporter** app on the Miyoo from the Apps menu — the status
-panel shows the device IP and the URL (e.g. `http://192.168.1.42:8088`).
-From any phone or laptop on the same Wi-Fi you can:
-
-- See live broker / daemon status
-- Toggle the daemon ON / OFF without touching the device
-- Edit `MQTT_HOST` / port / user / password / interval / `DEVICE_ID`
-- Save → the daemon restarts and starts publishing with the new config
-
-This means you don't need to edit `mqtt.conf` by hand to get started — the
-example file ships with placeholder values, and the web UI rewrites them.
-Editing the file by hand still works for headless / scripted setups.
-
 ## Quick install
 
 ```sh
 git clone https://github.com/hudsonbrendon/miyoo-mqtt-reporter.git
 cd miyoo-mqtt-reporter
 
-# 1. (optional) pre-edit the broker config — or skip and use the web UI later.
-cp App/MQTTReporter/etc/mqtt.conf.example App/MQTTReporter/etc/mqtt.conf
-$EDITOR App/MQTTReporter/etc/mqtt.conf
-# At minimum set MQTT_HOST (LAN IP, NOT homeassistant.local), MQTT_USER, MQTT_PASS
-
-# 2. Plug the Miyoo SD card into your computer, then deploy:
+# Plug the Miyoo SD card into your computer, then deploy:
 ./install.sh /Volumes/Onion          # macOS
 # or
 ./install.sh /media/$USER/Onion      # Linux
-
-# 3. Eject. Slot the SD back into the Miyoo. Boot.
-# Daemon autostarts in background; entities show up in HA within 10s.
-# Open "MQTT Reporter" from the Apps menu to see the device IP and the
-# web config URL — the app itself is read-only status now (toggling and
-# editing config happens on the web UI).
 ```
+
+That's it for the host side — no config file editing required.
+
+Eject the SD card, slot it back into the Miyoo and boot. The daemon and a
+small on-device web server autostart in the background. **The first
+publish will fail** (no broker configured yet) — that's expected.
 
 The vendored `mosquitto_pub` ARMv7 binary + dependencies are already in the
 repo (`App/MQTTReporter/bin/` and `App/MQTTReporter/lib/`). They target Debian
 Buster armhf, glibc 2.28 — see [Quirks](#quirks) for why.
+
+## Configure via the web UI (recommended)
+
+Once the device boots, open the **MQTT Reporter** app from the Apps menu.
+You'll see two pages: a short help screen and a QR code with the on-device
+config URL (e.g. `http://192.168.1.42:8088`).
+
+- **Scan the QR with your phone**, or type the URL on any device on the
+  same Wi-Fi network. No phone app to install.
+- Fill in **broker host, port, user, password, publish interval, device id**.
+- Hit **Save** — the daemon restarts with the new config and starts
+  publishing within a few seconds.
+
+Once you're connected, the same UI also lets you:
+
+- Watch live broker / daemon status (last publish age, entity count, IP).
+- **Toggle the daemon on/off** without touching the device.
+- **Pick which entities are published** to MQTT — uncheck any of the 73
+  entities (battery, volume, current game, playtime, …) and they get
+  removed from Home Assistant on the next save.
+- Switch between **dark and light themes**.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/hudsonbrendon/miyoo-mqtt-reporter/main/assets/web-ui.png" alt="On-device web config UI" width="720" />
+</p>
+
+> Don't want to use the web UI? You can still set everything by editing
+> `App/MQTTReporter/etc/mqtt.conf` on the SD card directly. See
+> [Configuration reference (advanced / headless)](#configuration-reference-advanced--headless)
+> for the file keys. The web UI just rewrites that same file.
 
 ### Updating an already-installed device
 
@@ -206,7 +215,11 @@ git pull
 - Re-creates the `state/enabled` flag so autostart stays on
 - Removes any obsolete `runtime.sh.user` block from older installs
 
-## Configuration
+## Configuration reference (advanced / headless)
+
+The web UI is the recommended path. This section is for headless or
+scripted setups where you'd rather edit the conf file directly on the SD
+card before first boot.
 
 `App/MQTTReporter/etc/mqtt.conf` keys:
 
@@ -223,6 +236,11 @@ git pull
 
 The file is sourced via POSIX `.` (so it accepts shell-quoted values too). It
 is **not committed** to git (`.gitignore` excludes it).
+
+To restrict which entities get published from a fresh install (matching
+the per-entity selection from the web UI), drop one entity key per line
+into `App/MQTTReporter/etc/entities.conf` before deploying. A missing or
+empty file = all 73 entities published.
 
 ### MQTT topics
 
