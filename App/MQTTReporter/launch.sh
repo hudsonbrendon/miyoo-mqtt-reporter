@@ -66,30 +66,51 @@ fi
 
 URL="http://$ip:$PORT"
 
-# Generate a QR code for the config URL. Keep small enough to fit on the
-# Mini Plus's 640×480 screen alongside the message text.
-qr_arg=""
+# infoPanel does NOT combine --message and --image on the same screen,
+# so we show two panels in sequence:
+#   1. status + URL + instructions (text)
+#   2. QR code (image only)
+# Either can be dismissed with B.
+text_msg="Status:      $run_label
+Broker:      $broker_label
+Last publish: $last_label
+Device id:    ${device_id:-?}
+
+To configure, open this URL on a phone
+or laptop on the same Wi-Fi:
+
+    $URL
+
+Or just press B again to see a QR code
+you can scan with your phone camera."
+
+# Generate the QR PNG up-front so panel 2 has it ready.
+qr_ready=0
 if [ "$ip" != "(no wifi)" ] && [ -x "$QRENCODE" ]; then
-    if "$QRENCODE" -o "$QR_PNG" -s 6 -m 2 -l M "$URL" >/dev/null 2>&1; then
-        qr_arg="--image $QR_PNG"
+    if "$QRENCODE" -o "$QR_PNG" -s 8 -m 3 -l M "$URL" >/dev/null 2>&1; then
+        qr_ready=1
     fi
 fi
 
-msg="Daemon: $run_label   Broker: $broker_label
-Last publish: $last_label
-Device id: ${device_id:-?}
+show_text_panel() {
+    if [ -x "$INFO_PANEL" ]; then
+        "$INFO_PANEL" --title "MQTT Reporter" \
+                      --message "$text_msg" \
+                      --persistent >/dev/null 2>&1 || true
+    else
+        printf '%s\n' "$text_msg"
+        sleep 6
+    fi
+}
 
-Open on your phone (same Wi-Fi):
+show_qr_panel() {
+    if [ "$qr_ready" != "1" ]; then return; fi
+    if [ -x "$INFO_PANEL" ]; then
+        "$INFO_PANEL" --title "Scan to configure: $URL" \
+                      --image "$QR_PNG" \
+                      --persistent >/dev/null 2>&1 || true
+    fi
+}
 
-   $URL
-
-Scan the QR with your phone camera, or type
-the URL above. Press B to close."
-
-if [ -x "$INFO_PANEL" ]; then
-    # shellcheck disable=SC2086
-    "$INFO_PANEL" --title "MQTT Reporter" --message "$msg" --persistent $qr_arg >/dev/null 2>&1 || true
-else
-    printf '%s\n' "$msg"
-    sleep 6
-fi
+show_text_panel
+show_qr_panel
