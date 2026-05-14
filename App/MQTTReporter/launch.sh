@@ -81,7 +81,9 @@ QR_PNG_TMP="/tmp/$QR_PNG_REL_NAME"
 
 qr_ready=0
 if [ "$ip" != "(no wifi)" ] && [ -x "$QRENCODE" ]; then
-    if "$QRENCODE" -o "$QR_PNG_TMP" -s 8 -m 4 -l M "$URL" >/dev/null 2>&1; then
+    # -t PNG32 emits 32-bit RGBA PNG; infoPanel's SDL_image can't always
+    # render the default 1-bit indexed PNG that qrencode produces.
+    if "$QRENCODE" -t PNG32 -o "$QR_PNG_TMP" -s 8 -m 4 -l M "$URL" >/dev/null 2>&1; then
         qr_ready=1
     fi
 fi
