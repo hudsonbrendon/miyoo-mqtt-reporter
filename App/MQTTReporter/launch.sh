@@ -104,10 +104,14 @@ fi
 } > "$PAGES_JSON"
 
 if [ -x "$INFO_PANEL" ] && [ -s "$PAGES_JSON" ]; then
+    # NB: do NOT pass --persistent here. In images-json mode it sets
+    # wait_confirm=false which makes infoPanel exit after one render
+    # (the screen looks stuck because the framebuffer keeps the last
+    # frame but no process is alive to read keys). Default behaviour
+    # waits for A/B/L/R and exits on B.
     "$INFO_PANEL" \
         --images-json "$PAGES_JSON" \
         --show-theme-controls \
-        --persistent \
         >/dev/null 2>&1 || true
 elif [ -x "$INFO_PANEL" ]; then
     "$INFO_PANEL" \
@@ -116,7 +120,7 @@ elif [ -x "$INFO_PANEL" ]; then
 
 Daemon: $run_label   Broker: $broker_label
 Last publish: $last_label" \
-        --persistent >/dev/null 2>&1 || true
+        >/dev/null 2>&1 || true
 else
     printf 'MQTT Reporter — open %s\n' "$URL"
     sleep 5
