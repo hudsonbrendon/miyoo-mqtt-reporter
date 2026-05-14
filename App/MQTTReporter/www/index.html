@@ -29,6 +29,26 @@
   </section>
 
   <section class="card">
+    <h2>Published entities</h2>
+    <p class="muted small">
+      Choose which entities to publish to MQTT. Unchecked entities are
+      removed from Home Assistant on next save. Saving restarts the
+      daemon.
+    </p>
+    <div class="entities-toolbar">
+      <button type="button" id="ent-all">All</button>
+      <button type="button" id="ent-none">None</button>
+      <input type="search" id="ent-filter" placeholder="filter…">
+    </div>
+    <form id="entities-form" action="/cgi-bin/entities" method="post">
+      <div class="entities-grid" id="entities-grid">
+        <p class="muted">Loading…</p>
+      </div>
+      <button type="submit">Save entities &amp; restart</button>
+    </form>
+  </section>
+
+  <section class="card">
     <h2>Configuration</h2>
     <form action="/cgi-bin/config" method="post" autocomplete="off">
       <label>MQTT host

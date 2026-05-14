@@ -29,13 +29,24 @@ state_topic() { printf 'miyoo/%s/state' "$1"; }
 availability_topic() { printf 'miyoo/%s/availability' "$1"; }
 
 # _emit <device_id> <component> <object_id> <name> <unit> <value_tpl> <icon> <device_class>
+# When the entity is NOT enabled, publish an empty retained payload to the
+# config topic. HA treats empty retained payloads as "remove this entity",
+# so unchecking a box on the web UI actually deletes the entity from HA
+# after the next daemon restart.
 _emit() {
     local did="$1" comp="$2" obj="$3" name="$4" unit="$5" tpl="$6" icon="$7" cls="$8"
-    local st at uid cfg_topic payload
-    st="$(state_topic "$did")"
-    at="$(availability_topic "$did")"
+    local uid cfg_topic payload
     uid="${did}_${obj}"
     cfg_topic="homeassistant/${comp}/${uid}/config"
+
+    if ! is_enabled "$obj"; then
+        mqtt_publish "$cfg_topic" "" 0 true
+        return 0
+    fi
+
+    local st at
+    st="$(state_topic "$did")"
+    at="$(availability_topic "$did")"
     # Compact JSON, abbreviated HA keys.
     payload="$(printf '{"name":"%s","uniq_id":"%s","stat_t":"%s","avty_t":"%s","val_tpl":"%s","ic":"%s"%s%s,"dev":{"ids":["%s"],"name":"Miyoo Mini Plus (%s)","mf":"Miyoo","mdl":"Mini Plus","sw":"OnionOS"}}' \
         "$name" "$uid" "$st" "$at" "$tpl" "$icon" \

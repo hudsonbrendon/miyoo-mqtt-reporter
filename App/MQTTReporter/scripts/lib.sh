@@ -37,6 +37,31 @@ load_config() {
     return "$rc"
 }
 
+# load_enabled_entities <path>
+# Reads entity keys (one per line) from the given file into the global
+# ENABLED_ENTITIES, padded with spaces for fast " key " substring matching.
+# Missing file → empty string → is_enabled() returns 0 for ALL keys
+# (default = publish everything).
+load_enabled_entities() {
+    local f="$1"
+    if [ -r "$f" ]; then
+        ENABLED_ENTITIES=" $(grep -vE '^[[:space:]]*(#|$)' "$f" | tr '\n' ' ')"
+    else
+        ENABLED_ENTITIES=""
+    fi
+    export ENABLED_ENTITIES
+}
+
+# is_enabled <entity_key>
+# Returns 0 if the key is enabled (or the list is unset = all on).
+is_enabled() {
+    [ -z "${ENABLED_ENTITIES:-}" ] && return 0
+    case "$ENABLED_ENTITIES" in
+        *" $1 "*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 # mqtt_publish <topic> <payload> <qos> <retain:true|false>
 # Requires env: MQTT_HOST, MQTT_PORT. Optional: MQTT_USER, MQTT_PASS, KEEPALIVE.
 mqtt_publish() {

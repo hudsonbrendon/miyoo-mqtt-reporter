@@ -57,6 +57,55 @@ $("btn-toggle").addEventListener("click", async () => {
   refreshStatus();
 });
 
+async function loadEntities() {
+  try {
+    const r = await fetch("/cgi-bin/entities?format=json", { cache: "no-store" });
+    const data = await r.json();
+    const grid = $("entities-grid");
+    grid.innerHTML = "";
+    for (const e of data.entities) {
+      const label = document.createElement("label");
+      label.dataset.key = e.key;
+      label.dataset.label = e.label.toLowerCase();
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.name = "entity_" + e.key;
+      cb.value = "on";
+      cb.checked = !!e.enabled;
+      const txt = document.createElement("span");
+      txt.textContent = e.label.replace(/^Miyoo\s+/, "");
+      const comp = document.createElement("span");
+      comp.className = "ent-component";
+      comp.textContent = e.component === "binary_sensor" ? "bin" : "";
+      label.appendChild(cb);
+      label.appendChild(txt);
+      if (comp.textContent) label.appendChild(comp);
+      grid.appendChild(label);
+    }
+  } catch (e) {
+    console.error(e);
+    $("entities-grid").textContent = "Failed to load entities.";
+  }
+}
+
+$("ent-all").addEventListener("click", () => {
+  document.querySelectorAll("#entities-grid input[type=checkbox]").forEach(c => c.checked = true);
+});
+$("ent-none").addEventListener("click", () => {
+  document.querySelectorAll("#entities-grid input[type=checkbox]").forEach(c => c.checked = false);
+});
+$("ent-filter").addEventListener("input", (ev) => {
+  const q = ev.target.value.toLowerCase().trim();
+  document.querySelectorAll("#entities-grid label").forEach(l => {
+    if (!q || l.dataset.label.includes(q) || l.dataset.key.includes(q)) {
+      l.classList.remove("hidden");
+    } else {
+      l.classList.add("hidden");
+    }
+  });
+});
+
 loadConfig();
+loadEntities();
 refreshStatus();
 setInterval(refreshStatus, 5000);

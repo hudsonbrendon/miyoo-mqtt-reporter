@@ -277,6 +277,9 @@ daemon_main() {
     DEVICE_ID="$(device_id)"
     _resolve_battery_path
 
+    # Per-entity opt-in: $APP_DIR/etc/entities.conf. Missing file = all enabled.
+    load_enabled_entities "$(dirname "$cfg")/entities.conf"
+
     PID_FILE="${PID_FILE:-/tmp/mqttreporter.pid}"
     echo $$ > "$PID_FILE"
 
