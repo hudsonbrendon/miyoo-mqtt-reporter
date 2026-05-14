@@ -4,7 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MQTT Reporter — Miyoo Mini Plus</title>
-  <link rel="stylesheet" href="/style.css?v=3">
+  <link rel="stylesheet" href="/style.css?v=4">
+  <script>
+    // Set theme before paint to avoid a flash.
+    (function () {
+      const stored = localStorage.getItem("mqttr.theme");
+      const prefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+      const theme = stored || (prefersLight ? "light" : "dark");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
 </head>
 <body>
   <div class="app">
@@ -29,6 +38,15 @@
           <span class="dot" id="hero-dot"></span>
           <span id="hero-label">connecting…</span>
         </div>
+        <button class="ghost-btn icon-only" id="theme-toggle" type="button" aria-label="Toggle light/dark mode">
+          <svg class="theme-icon-dark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <svg class="theme-icon-light" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </button>
         <button class="ghost-btn" id="hero-toggle" type="button" title="Toggle daemon">
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v8M6 7a8 8 0 1 0 12 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
           <span>Toggle</span>
@@ -204,6 +222,6 @@
 
   <div class="toasts" id="toasts" aria-live="polite"></div>
 
-  <script src="/app.js?v=3"></script>
+  <script src="/app.js?v=4"></script>
 </body>
 </html>

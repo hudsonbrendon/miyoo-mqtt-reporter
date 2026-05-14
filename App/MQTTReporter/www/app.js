@@ -5,6 +5,34 @@
 const $  = (id) => document.getElementById(id);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
+// ─── Theme toggle (dark / light) ────────────────────────────────────────
+// Initial theme is already applied by the inline <script> in <head> to
+// avoid FOUC. This handler reacts to the user's click and persists choice.
+const initTheme = () => {
+  const btn = $("theme-toggle");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const root = document.documentElement;
+    const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    root.classList.add("theme-fade");
+    root.setAttribute("data-theme", next);
+    localStorage.setItem("mqttr.theme", next);
+    // Remove the global transition class after the animation completes so
+    // hover/focus transitions stay snappy.
+    setTimeout(() => root.classList.remove("theme-fade"), 320);
+  });
+
+  // Live-react to the OS preference if the user hasn't explicitly chosen.
+  if (window.matchMedia && !localStorage.getItem("mqttr.theme")) {
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+    mq.addEventListener("change", (ev) => {
+      document.documentElement.classList.add("theme-fade");
+      document.documentElement.setAttribute("data-theme", ev.matches ? "light" : "dark");
+      setTimeout(() => document.documentElement.classList.remove("theme-fade"), 320);
+    });
+  }
+};
+
 // ─── Tab routing ────────────────────────────────────────────────────────
 const initTabs = () => {
   $$(".tab").forEach((btn) => {
@@ -341,6 +369,7 @@ function checkRedirectFlash() {
 }
 
 // ─── Boot ───────────────────────────────────────────────────────────────
+initTheme();
 initTabs();
 wireEntitiesToolbar();
 $("hero-toggle").addEventListener("click", toggleDaemon);

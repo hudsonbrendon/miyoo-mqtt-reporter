@@ -3,7 +3,9 @@
    Modern, glassy, dark-first. No build tooling — single sheet.
    ───────────────────────────────────────────────────────────────────────── */
 
-:root {
+:root,
+:root[data-theme="dark"] {
+  color-scheme:   dark;
   --bg:           #0a0e1a;
   --bg-elev:     rgba(255, 255, 255, 0.02);
   --surface:      #11172a;
@@ -21,12 +23,16 @@
   --accent-2:     #818cf8;
   --accent-glow:  rgba(56, 189, 248, 0.20);
   --grad:         linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+  --on-grad:      #061027;
 
   --ok:           #34d399;
   --ok-glow:      rgba(52, 211, 153, 0.18);
   --warn:         #fbbf24;
   --bad:          #f87171;
   --bad-glow:     rgba(248, 113, 113, 0.18);
+
+  --bg-glow-1:    rgba(129, 140, 248, 0.10);
+  --bg-glow-2:    rgba(56, 189, 248, 0.08);
 
   --radius:       12px;
   --radius-sm:    8px;
@@ -38,13 +44,47 @@
   --easing:       cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+:root[data-theme="light"] {
+  color-scheme:   light;
+  --bg:           #f5f7fb;
+  --bg-elev:      rgba(0, 0, 0, 0.02);
+  --surface:      #ffffff;
+  --surface-hi:   #f1f4fa;
+  --surface-2:    #e5eaf3;
+  --border:       rgba(15, 23, 42, 0.08);
+  --border-hi:    rgba(15, 23, 42, 0.14);
+
+  --fg:           #0f172a;
+  --fg-soft:      #1e293b;
+  --muted:        #64748b;
+  --muted-2:      #94a3b8;
+
+  --accent:       #0284c7;
+  --accent-2:     #6366f1;
+  --accent-glow:  rgba(2, 132, 199, 0.15);
+  --grad:         linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+  --on-grad:      #ffffff;
+
+  --ok:           #059669;
+  --ok-glow:      rgba(5, 150, 105, 0.16);
+  --warn:         #d97706;
+  --bad:          #dc2626;
+  --bad-glow:     rgba(220, 38, 38, 0.14);
+
+  --bg-glow-1:    rgba(99, 102, 241, 0.08);
+  --bg-glow-2:    rgba(2, 132, 199, 0.06);
+
+  --shadow-md:    0 4px 18px rgba(15, 23, 42, 0.08);
+  --shadow-lg:    0 12px 40px rgba(15, 23, 42, 0.12);
+}
+
 * { box-sizing: border-box; }
 
 html, body {
   margin: 0;
   background:
-    radial-gradient(1200px 600px at 80% -10%, rgba(129, 140, 248, 0.10), transparent 50%),
-    radial-gradient(900px 500px at -10% 110%, rgba(56, 189, 248, 0.08), transparent 50%),
+    radial-gradient(1200px 600px at 80% -10%, var(--bg-glow-1), transparent 50%),
+    radial-gradient(900px 500px at -10% 110%, var(--bg-glow-2), transparent 50%),
     var(--bg);
   background-attachment: fixed;
   color: var(--fg);
@@ -52,6 +92,15 @@ html, body {
   font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+/* Smooth crossfade between themes — runs once after `theme-fade` is applied. */
+:root.theme-fade,
+:root.theme-fade * {
+  transition: background-color 0.28s var(--easing),
+              border-color 0.28s var(--easing),
+              color 0.28s var(--easing),
+              fill 0.28s var(--easing),
+              stroke 0.28s var(--easing) !important;
 }
 
 a { color: var(--accent); text-decoration: none; }
@@ -186,8 +235,8 @@ code {
 }
 .primary-btn {
   background: var(--grad);
-  color: #061027;
-  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.20);
+  color: var(--on-grad);
+  box-shadow: 0 4px 16px var(--accent-glow);
 }
 .primary-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(56, 189, 248, 0.30); }
 .primary-btn:active { transform: translateY(0); }
@@ -205,6 +254,14 @@ code {
 }
 .ghost-btn:hover { background: var(--surface-hi); color: var(--fg); border-color: var(--border-hi); }
 .ghost-btn:active { transform: translateY(1px); }
+
+.icon-only {
+  padding: 9px 10px;
+  gap: 0;
+}
+.theme-icon-dark, .theme-icon-light { display: none; }
+:root[data-theme="dark"]  .theme-icon-light { display: block; }
+:root[data-theme="light"] .theme-icon-dark  { display: block; }
 
 /* ── Tabs ───────────────────────────────────────────────────────────── */
 .tabs {
@@ -493,10 +550,11 @@ code {
   border-color: transparent;
 }
 .entity input[type=checkbox]:checked::after {
-  content: "";
-  width: 9px;
-  height: 9px;
-  background: url("data:image/svg+xml;utf8,<svg viewBox='0 0 12 12' xmlns='http://www.w3.org/2000/svg'><path d='M2 6.2 5 9l5-6' stroke='%23061027' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat center / contain;
+  content: "✓";
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--on-grad);
+  line-height: 1;
 }
 .entity-name { flex: 1; min-width: 0; }
 .entity-name .ent-key {
