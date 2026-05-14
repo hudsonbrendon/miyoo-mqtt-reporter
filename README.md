@@ -109,6 +109,26 @@ every `INTERVAL` seconds (default 10) and HA Discovery maps fields to entities.
                                                   └─────────────────────┘
 ```
 
+## Companion Lovelace card
+
+A dedicated card visualises every entity this daemon publishes — battery,
+volume, temperature, current game, playtime — in a single Miyoo-shaped
+widget:
+
+➡ **[hudsonbrendon/miyoo-mini-card](https://github.com/hudsonbrendon/miyoo-mini-card)**
+
+<p align="center">
+  <a href="https://github.com/hudsonbrendon/miyoo-mini-card">
+    <img src="https://raw.githubusercontent.com/hudsonbrendon/miyoo-mini-card/main/assets/card-preview.png"
+         alt="miyoo-mini-card preview" width="540" />
+  </a>
+</p>
+
+Installable via HACS (Frontend → Custom repositories → category Lovelace) or
+manually from the [latest release](https://github.com/hudsonbrendon/miyoo-mini-card/releases/latest).
+The card auto-resolves all entity ids from the `DEVICE_ID` prefix you set in
+`mqtt.conf` — no per-entity wiring required.
+
 ## Requirements
 
 **Hardware**
