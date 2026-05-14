@@ -151,7 +151,30 @@ The card auto-resolves all entity ids from the `DEVICE_ID` prefix you set in
 - POSIX `sh`, `shellcheck`, `mosquitto` + `mosquitto-clients` for integration tests
 - `rsync` recommended for `install.sh`
 
-## Quick install
+## Install
+
+### Recommended — download the release zip
+
+Easiest path. No `git`, no toolchain, no shell scripts on the host.
+
+1. Download the latest release zip from the [Releases page](https://github.com/hudsonbrendon/miyoo-mqtt-reporter/releases/latest).
+   The file is named `miyoo-mqtt-reporter-vX.Y.Z.zip` (a few MB).
+2. Mount the Miyoo SD card on a computer (eg. plug the card in directly).
+3. **Extract the zip at the SD card's root**, merging into the existing
+   folders. After extracting you should see:
+   ```
+   <SD root>/App/MQTTReporter/...
+   <SD root>/.tmp_update/startup/mqttreporter.sh
+   ```
+4. Eject the SD, slot it into the Miyoo, boot.
+5. Open the **MQTT Reporter** app from the Apps menu — see
+   [Configure via the web UI](#configure-via-the-web-ui-recommended) below.
+
+That's the whole install. No broker config edits required.
+
+### From source (developers)
+
+Use this if you cloned the repo and want to deploy from your working tree:
 
 ```sh
 git clone https://github.com/hudsonbrendon/miyoo-mqtt-reporter.git
@@ -163,11 +186,11 @@ cd miyoo-mqtt-reporter
 ./install.sh /media/$USER/Onion      # Linux
 ```
 
-That's it for the host side — no config file editing required.
-
-Eject the SD card, slot it back into the Miyoo and boot. The daemon and a
-small on-device web server autostart in the background. **The first
-publish will fail** (no broker configured yet) — that's expected.
+`install.sh` does the same thing the release zip extraction does — copies
+`App/MQTTReporter/` to the SD and drops the startup hook into
+`.tmp_update/startup/`. It also chmods the executables and cleans up old
+hooks. Idempotent: re-running preserves your `etc/mqtt.conf` and your
+autostart flag (see `--exclude '/etc/mqtt.conf'` in the rsync call).
 
 The vendored `mosquitto_pub` ARMv7 binary + dependencies are already in the
 repo (`App/MQTTReporter/bin/` and `App/MQTTReporter/lib/`). They target Debian
@@ -203,17 +226,16 @@ Once you're connected, the same UI also lets you:
 > [Configuration reference (advanced / headless)](#configuration-reference-advanced--headless)
 > for the file keys. The web UI just rewrites that same file.
 
-### Updating an already-installed device
+### Updating
 
-```sh
-git pull
-./install.sh /Volumes/Onion
-```
+- **Zip install**: download the new release zip, extract it at the SD root
+  again. Your `etc/mqtt.conf` and `etc/entities.conf` aren't touched
+  (the zip omits them).
+- **Source install**: `git pull && ./install.sh /Volumes/Onion`.
 
-`install.sh` is idempotent:
-- `rsync -aL --delete --exclude '/etc/mqtt.conf'` preserves your broker creds
-- Re-creates the `state/enabled` flag so autostart stays on
-- Removes any obsolete `runtime.sh.user` block from older installs
+Either path preserves your broker creds + the autostart flag, removes any
+obsolete `runtime.sh.user` hook from older installs, and re-chmods the
+shipped executables.
 
 ## Configuration reference (advanced / headless)
 

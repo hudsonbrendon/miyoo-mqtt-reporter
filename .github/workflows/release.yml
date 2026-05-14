@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build SD-card-ready zip
+        id: build
+        run: |
+          set -eu
+          STAGING=$(mktemp -d)
+
+          # The zip mirrors the Miyoo SD card layout. When the user
+          # extracts it at the SD root, App/MQTTReporter/ and the
+          # OnionOS startup hook land in the right places.
+          mkdir -p "$STAGING/App"
+          cp -R App/MQTTReporter "$STAGING/App/"
+
+          mkdir -p "$STAGING/.tmp_update/startup"
+          cp boot/startup/mqttreporter.sh \
+             "$STAGING/.tmp_update/startup/mqttreporter.sh"
+
+          # Drop noise that shouldn't ship to end-user devices.
+          find "$STAGING" -name '.gitkeep'  -delete
+          find "$STAGING" -name '.DS_Store' -delete
+          rm -f  "$STAGING/App/MQTTReporter/etc/mqtt.conf"
+          rm -rf "$STAGING/App/MQTTReporter/state"
+
+          # FAT32 doesn't carry +x — set it inside the zip itself.
+          chmod +x \
+            "$STAGING/App/MQTTReporter/launch.sh" \
+            "$STAGING/App/MQTTReporter/scripts/"*.sh \
+            "$STAGING/App/MQTTReporter/www/cgi-bin/"* \
+            "$STAGING/App/MQTTReporter/bin/"* \
+            "$STAGING/.tmp_update/startup/mqttreporter.sh"
+
+          VERSION="${GITHUB_REF_NAME#v}"
+          ZIP="miyoo-mqtt-reporter-${VERSION}.zip"
+
+          (cd "$STAGING" && zip -r -X "$GITHUB_WORKSPACE/$ZIP" App .tmp_update)
+
+          ls -la "$ZIP"
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.build.outputs.zip }}
+          generate_release_notes: true
+          body: |
+            ## Install (SD card)
+
+            1. Download the zip below.
+            2. Mount the Miyoo SD card on a computer.
+            3. Extract the zip **at the SD card's root** — your tool of
+               choice should merge into existing folders. After extracting
+               you should see `App/MQTTReporter/` and
+               `.tmp_update/startup/mqttreporter.sh` on the SD.
+            4. Eject the SD, slot it into the Miyoo, boot.
+            5. Open the **MQTT Reporter** app → scan the QR with your phone
+               (or visit the URL printed on screen) → fill broker host /
+               user / pass / interval → Save.
+
+            No broker config edits required — the on-device web UI handles
+            it. See the README for the
+            [advanced / headless](https://github.com/hudsonbrendon/miyoo-mqtt-reporter#configuration-reference-advanced--headless)
+            path if you prefer pre-editing `etc/mqtt.conf` on the SD.
