@@ -48,6 +48,9 @@ echo "Ensuring scripts are executable ..."
 chmod +x "$SD/App/MQTTReporter/launch.sh" \
          "$SD/App/MQTTReporter/scripts/"*.sh \
          "$SD/App/MQTTReporter/bin/mosquitto_pub"
+if [ -d "$SD/App/MQTTReporter/www/cgi-bin" ]; then
+    chmod +x "$SD/App/MQTTReporter/www/cgi-bin/"* 2>/dev/null || true
+fi
 
 # Cleanup macOS metadata cruft if installing from a Mac onto FAT32.
 find "$SD/App/MQTTReporter" -name '._*' -delete 2>/dev/null || true
@@ -59,9 +62,11 @@ touch "$SD/App/MQTTReporter/state/enabled"
 
 echo
 echo "Done. Next steps:"
-echo "  1. Pre-edit $SD/App/MQTTReporter/etc/mqtt.conf"
-echo "     (copy from etc/mqtt.conf.example, set MQTT_HOST/USER/PASS)."
+echo "  1. (optional) Pre-edit $SD/App/MQTTReporter/etc/mqtt.conf"
+echo "     or skip this — you can configure broker/user/pass from the web UI."
 echo "  2. Eject the SD card, slot it into the Miyoo, boot."
-echo "  3. Daemon autostarts in background — DO NOT open MQTT Reporter from"
-echo "     the Apps menu (that toggles it OFF)."
-echo "  4. Confirm in Home Assistant: Settings → Devices → MQTT."
+echo "  3. Open the MQTT Reporter app from the Apps menu: it shows the device"
+echo "     IP and the URL of the on-device config UI (e.g. http://<ip>:8088)."
+echo "  4. From any phone on the same Wi-Fi, open that URL, fill the broker"
+echo "     details, hit Save. The daemon restarts and starts publishing."
+echo "  5. Confirm in Home Assistant: Settings → Devices → MQTT."

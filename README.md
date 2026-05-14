@@ -151,13 +151,29 @@ The card auto-resolves all entity ids from the `DEVICE_ID` prefix you set in
 - POSIX `sh`, `shellcheck`, `mosquitto` + `mosquitto-clients` for integration tests
 - `rsync` recommended for `install.sh`
 
+## On-device web config UI
+
+After installation the daemon serves a tiny HTTP config UI on **port 8088**.
+Open the **MQTT Reporter** app on the Miyoo from the Apps menu — the status
+panel shows the device IP and the URL (e.g. `http://192.168.1.42:8088`).
+From any phone or laptop on the same Wi-Fi you can:
+
+- See live broker / daemon status
+- Toggle the daemon ON / OFF without touching the device
+- Edit `MQTT_HOST` / port / user / password / interval / `DEVICE_ID`
+- Save → the daemon restarts and starts publishing with the new config
+
+This means you don't need to edit `mqtt.conf` by hand to get started — the
+example file ships with placeholder values, and the web UI rewrites them.
+Editing the file by hand still works for headless / scripted setups.
+
 ## Quick install
 
 ```sh
 git clone https://github.com/hudsonbrendon/miyoo-mqtt-reporter.git
 cd miyoo-mqtt-reporter
 
-# 1. Pre-edit the broker config
+# 1. (optional) pre-edit the broker config — or skip and use the web UI later.
 cp App/MQTTReporter/etc/mqtt.conf.example App/MQTTReporter/etc/mqtt.conf
 $EDITOR App/MQTTReporter/etc/mqtt.conf
 # At minimum set MQTT_HOST (LAN IP, NOT homeassistant.local), MQTT_USER, MQTT_PASS
@@ -169,7 +185,9 @@ $EDITOR App/MQTTReporter/etc/mqtt.conf
 
 # 3. Eject. Slot the SD back into the Miyoo. Boot.
 # Daemon autostarts in background; entities show up in HA within 10s.
-# IMPORTANT: do NOT open "MQTT Reporter" from the Apps menu — that toggles it OFF.
+# Open "MQTT Reporter" from the Apps menu to see the device IP and the
+# web config URL — the app itself is read-only status now (toggling and
+# editing config happens on the web UI).
 ```
 
 The vendored `mosquitto_pub` ARMv7 binary + dependencies are already in the
@@ -347,17 +365,14 @@ the boot environment. `device_id()` sees that and would use `354` as the
 identifier, which is meaningless to humans. The example config pins
 `DEVICE_ID=miyoominiplus` to keep entities stable.
 
-### Don't open the app from the menu
+### The Apps menu entry is read-only status
 
-`launch.sh` is wired as a **toggle**. If autostart is already on and you
-open "MQTT Reporter" from the Apps menu, it will turn OFF and remove the
-`state/enabled` flag so the next boot doesn't autostart. The recommended
-workflow is to install once and never touch the menu entry — let it run in
-background.
-
-If you do want manual control:
-- Currently OFF → open app → starts daemon, creates `state/enabled`
-- Currently ON → open app → stops daemon, removes flag
+`launch.sh` no longer toggles the daemon. Opening "MQTT Reporter" from the
+Apps menu now just shows a status panel — daemon ON/OFF, broker connected
+or not, last publish age, and **the device IP + web config URL** (default
+`http://<ip>:8088`). Toggling and editing the config happens on that web
+UI. The daemon continues running while the panel is open and is unaffected
+by closing it.
 
 ## Usage
 

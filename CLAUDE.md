@@ -46,15 +46,33 @@ is documented in `App/MQTTReporter/bin/SOURCE.txt`.
 ## Architecture
 
 Everything is sourced shell. Files under `App/MQTTReporter/scripts/` are
-*libraries* — they only define functions, no side effects on source. The two
-processes that actually run on device are:
+*libraries* — they only define functions, no side effects on source. The
+three processes that run on device are:
 
 ```
    .tmp_update/startup/mqttreporter.sh   (OnionOS boot hook)
        │
        ├─ nohup setsid sh vol-watcher.sh &       → /tmp/live_vol
-       └─ nohup setsid sh daemon.sh &            → mqtt_publish loop
+       ├─ nohup setsid sh daemon.sh &            → mqtt_publish loop
+       │                                          + /tmp/mqttreporter/status.json
+       └─ nohup setsid sh httpd.sh &             → busybox httpd :8088
+                                                   serves www/ + cgi-bin/
 ```
+
+The web config UI (`www/`) is a static HTML page (`index.html` + `app.js`
++ `style.css`) plus three POSIX-shell CGI scripts under `www/cgi-bin/`:
+
+- **`status`** — emits the runtime JSON, augmenting `/tmp/mqttreporter/status.json`
+  with a live `running` boolean from the pidfile.
+- **`config`** — `GET ?format=json` returns the current `mqtt.conf` (password
+  masked); `POST` validates each field, rewrites the conf, then restarts the
+  daemon.
+- **`toggle`** — `POST` flips `state/enabled` + (re)spawns or kills the
+  daemon, returns the new `running` state.
+
+`launch.sh` (the Apps-menu entry) is now read-only: reads
+`status.json`, picks up the device IP, and renders an `infoPanel`
+showing daemon state + the web config URL. No toggling from the panel.
 
 `daemon.sh` has a dual identity: when **sourced** it only exposes
 `daemon_main` and the helpers, when **executed** (the `if [ "${0##*/}" = "daemon.sh" ]`

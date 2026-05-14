@@ -205,6 +205,42 @@ MEM_PATH="/proc/meminfo"
 LOAD_PATH="/proc/loadavg"
 PID_FILE=""
 STOP=0
+STATUS_DIR="/tmp/mqttreporter"
+STATUS_FILE="$STATUS_DIR/status.json"
+# Roughly mirrors the count emitted by publish_discovery + state payload.
+ENTITY_COUNT=73
+
+_my_ip() {
+    ip route get 1 2>/dev/null | awk '{ for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit} }'
+}
+
+# _write_runtime_status <broker_ok:true|false> <last_error_string_or_empty>
+_write_runtime_status() {
+    local ok="$1"
+    local err="$2"
+    local now ip
+    now=$(date +%s 2>/dev/null)
+    ip=$(_my_ip)
+    mkdir -p "$STATUS_DIR" 2>/dev/null || true
+    {
+        printf '{'
+        printf '"broker_ok":%s,'           "$ok"
+        printf '"last_publish_epoch":%s,'  "${now:-null}"
+        if [ -z "$err" ]; then
+            printf '"last_error":null,'
+        else
+            printf '"last_error":"%s",' "$(printf '%s' "$err" | sed -e 's|\\|\\\\|g' -e 's|"|\\"|g')"
+        fi
+        printf '"entity_count":%s,'       "$ENTITY_COUNT"
+        printf '"device_id":"%s",'        "${DEVICE_ID:-}"
+        if [ -z "$ip" ]; then
+            printf '"ip":null'
+        else
+            printf '"ip":"%s"' "$ip"
+        fi
+        printf '}'
+    } > "$STATUS_FILE.tmp" 2>/dev/null && mv -f "$STATUS_FILE.tmp" "$STATUS_FILE" 2>/dev/null
+}
 
 _resolve_battery_path() {
     if [ -n "${BATTERY_PATH:-}" ]; then
@@ -220,8 +256,11 @@ _signal_stop() { STOP=1; }
 _publish_state() {
     local payload
     payload="$(build_state_payload "$BAT_DIR" "$MEM_PATH" "$LOAD_PATH")"
-    if ! mqtt_publish "$(state_topic "$DEVICE_ID")" "$payload" 0 false; then
+    if mqtt_publish "$(state_topic "$DEVICE_ID")" "$payload" 0 false; then
+        _write_runtime_status true ""
+    else
         log_warn "publish failed"
+        _write_runtime_status false "publish failed"
     fi
 }
 

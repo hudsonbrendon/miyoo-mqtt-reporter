@@ -1,0 +1,26 @@
+#!/bin/sh
+# CGI: POST /cgi-bin/toggle — turn the daemon ON or OFF, return the new state.
+# shellcheck shell=sh disable=SC1091
+set -u
+
+APP_DIR="${APP_DIR:-/mnt/SDCARD/App/MQTTReporter}"
+
+if [ "${REQUEST_METHOD:-GET}" != "POST" ]; then
+    printf 'Status: 405 Method Not Allowed\r\n'
+    printf 'Content-Type: text/plain\r\n\r\nPOST only\n'
+    exit 0
+fi
+
+# shellcheck disable=SC1091
+. "$APP_DIR/scripts/toggle.sh"
+do_toggle >/dev/null 2>&1
+
+# Re-evaluate after toggle.
+running=false
+if [ -r /tmp/mqttreporter.pid ]; then
+    pid=$(cat /tmp/mqttreporter.pid 2>/dev/null)
+    [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && running=true
+fi
+
+printf 'Content-Type: application/json\r\n\r\n'
+printf '{"running":%s}\n' "$running"

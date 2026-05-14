@@ -26,3 +26,8 @@ nohup setsid sh "$APP_DIR/scripts/vol-watcher.sh" \
 # MQTT publish daemon
 nohup setsid sh "$APP_DIR/scripts/daemon.sh" \
     >> "$STATE_DIR/daemon.log" 2>&1 < /dev/null &
+
+# Web config UI (busybox httpd on :8088 — configurable via $HTTPD_PORT)
+APP_DIR_EXPORT="$APP_DIR" \
+nohup setsid sh "$APP_DIR/scripts/httpd.sh" \
+    >> "$STATE_DIR/httpd.log" 2>&1 < /dev/null &

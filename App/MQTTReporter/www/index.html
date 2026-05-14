@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MQTT Reporter — Miyoo Mini Plus</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>MQTT Reporter</h1>
+    <p class="sub">Miyoo Mini Plus &middot; OnionOS</p>
+  </header>
+
+  <section id="status-card" class="card">
+    <h2>Status</h2>
+    <div class="status-grid">
+      <div><span class="label">Daemon</span> <span id="s-running">…</span></div>
+      <div><span class="label">Broker</span> <span id="s-broker">…</span></div>
+      <div><span class="label">Last publish</span> <span id="s-last">…</span></div>
+      <div><span class="label">Entities</span> <span id="s-entities">…</span></div>
+      <div><span class="label">Device id</span> <span id="s-devid">…</span></div>
+      <div><span class="label">IP</span> <span id="s-ip">…</span></div>
+    </div>
+    <div class="toggle-row">
+      <button id="btn-toggle" type="button">Toggle daemon</button>
+      <span id="toggle-feedback"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Configuration</h2>
+    <form action="/cgi-bin/config" method="post" autocomplete="off">
+      <label>MQTT host
+        <input name="MQTT_HOST" id="f-host" required pattern="[A-Za-z0-9._\-]+" placeholder="192.168.1.10">
+      </label>
+      <label>MQTT port
+        <input name="MQTT_PORT" id="f-port" type="number" min="1" max="65535" value="1883">
+      </label>
+      <label>MQTT username
+        <input name="MQTT_USER" id="f-user" placeholder="(empty for anonymous)">
+      </label>
+      <label>MQTT password
+        <input name="MQTT_PASS" id="f-pass" type="password" placeholder="(empty for anonymous)">
+      </label>
+      <label>Publish interval (seconds)
+        <input name="INTERVAL" id="f-interval" type="number" min="2" max="3600" value="10">
+      </label>
+      <label>Device id (HA prefix)
+        <input name="DEVICE_ID" id="f-devid" pattern="[a-z0-9_\-]+" value="miyoominiplus" required>
+      </label>
+      <label>MQTT keepalive (s)
+        <input name="KEEPALIVE" id="f-keepalive" type="number" min="10" max="3600" value="60">
+      </label>
+      <button type="submit">Save &amp; restart daemon</button>
+    </form>
+  </section>
+
+  <footer>
+    <p>Open-source &middot; <a href="https://github.com/hudsonbrendon/miyoo-mqtt-reporter">github.com/hudsonbrendon/miyoo-mqtt-reporter</a></p>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

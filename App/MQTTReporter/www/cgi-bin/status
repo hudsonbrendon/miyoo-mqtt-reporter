@@ -1,0 +1,25 @@
+#!/bin/sh
+# CGI: GET /cgi-bin/status — runtime status JSON for the daemon.
+# shellcheck shell=sh
+set -u
+
+STATE_FILE="/tmp/mqttreporter/status.json"
+PID_FILE="/tmp/mqttreporter.pid"
+
+printf 'Content-Type: application/json\r\n'
+printf 'Cache-Control: no-store\r\n\r\n'
+
+running=false
+if [ -r "$PID_FILE" ]; then
+    pid=$(cat "$PID_FILE" 2>/dev/null)
+    [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && running=true
+fi
+
+if [ -r "$STATE_FILE" ]; then
+    # Strip the trailing brace and inject "running"
+    body=$(cat "$STATE_FILE")
+    # body is like {"k":"v","k2":"v2"} — rewrite } to ,"running":<bool>}
+    printf '%s' "$body" | sed "s/}\$/,\"running\":$running}/"
+else
+    printf '{"running":%s,"broker_ok":null,"last_publish_epoch":null,"entity_count":null,"device_id":null,"ip":null,"last_error":null}\n' "$running"
+fi
