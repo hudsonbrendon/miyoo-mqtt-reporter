@@ -44,7 +44,6 @@ ip="$(_jread ip)"
 state="$(do_status)"
 broker_ok="$(_jread broker_ok)"
 last_epoch="$(_jread last_publish_epoch)"
-device_id="$(_jread device_id)"
 
 case "$broker_ok" in
     true)  broker_label="connected" ;;
@@ -66,51 +65,36 @@ fi
 
 URL="http://$ip:$PORT"
 
-# infoPanel does NOT combine --message and --image on the same screen,
-# so we show two panels in sequence:
-#   1. status + URL + instructions (text)
-#   2. QR code (image only)
-# Either can be dismissed with B.
-text_msg="Status:      $run_label
-Broker:      $broker_label
-Last publish: $last_label
-Device id:    ${device_id:-?}
-
-To configure, open this URL on a phone
-or laptop on the same Wi-Fi:
-
-    $URL
-
-Or just press B again to see a QR code
-you can scan with your phone camera."
-
-# Generate the QR PNG up-front so panel 2 has it ready.
-qr_ready=0
+# Render a single panel that combines the URL (in the title for hand-typing),
+# the daemon/broker status (message body), and the QR for phone scanning.
+# Earlier two-step approaches showed only the image panel because
+# message-only infoPanel screens get dismissed immediately on the Mini Plus.
+qr_arg=""
 if [ "$ip" != "(no wifi)" ] && [ -x "$QRENCODE" ]; then
-    if "$QRENCODE" -o "$QR_PNG" -s 8 -m 3 -l M "$URL" >/dev/null 2>&1; then
-        qr_ready=1
+    if "$QRENCODE" -o "$QR_PNG" -s 7 -m 4 -l M "$URL" >/dev/null 2>&1; then
+        qr_arg="--image $QR_PNG"
     fi
 fi
 
-show_text_panel() {
-    if [ -x "$INFO_PANEL" ]; then
-        "$INFO_PANEL" --title "MQTT Reporter" \
-                      --message "$text_msg" \
-                      --persistent >/dev/null 2>&1 || true
-    else
-        printf '%s\n' "$text_msg"
-        sleep 6
-    fi
-}
+msg="Status: $run_label   Broker: $broker_label
+Last publish: $last_label
 
-show_qr_panel() {
-    if [ "$qr_ready" != "1" ]; then return; fi
-    if [ -x "$INFO_PANEL" ]; then
-        "$INFO_PANEL" --title "Scan to configure: $URL" \
-                      --image "$QR_PNG" \
-                      --persistent >/dev/null 2>&1 || true
-    fi
-}
+Open the URL above on a phone or laptop on the same
+Wi-Fi network to configure the broker, toggle the
+daemon, and choose which entities are published.
 
-show_text_panel
-show_qr_panel
+Or scan the QR with a phone camera. Press B to close."
+
+if [ -x "$INFO_PANEL" ]; then
+    # shellcheck disable=SC2086
+    "$INFO_PANEL" \
+        --title "MQTT Reporter  ·  $URL" \
+        --message "$msg" \
+        $qr_arg \
+        --persistent \
+        >/dev/null 2>&1 || true
+else
+    printf '%s\n' "$URL"
+    printf '%s\n' "$msg"
+    sleep 6
+fi
