@@ -120,7 +120,7 @@ widget:
 <p align="center">
   <a href="https://github.com/hudsonbrendon/miyoo-mini-card">
     <img src="https://raw.githubusercontent.com/hudsonbrendon/miyoo-mini-card/main/assets/card-preview.png"
-         alt="miyoo-mini-card preview" width="540" />
+         alt="miyoo-mini-card preview" width="900" />
   </a>
 </p>
 
