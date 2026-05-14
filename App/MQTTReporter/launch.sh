@@ -13,7 +13,6 @@ INFO_PANEL="/mnt/SDCARD/.tmp_update/bin/infoPanel"
 QRENCODE="$APP_DIR/bin/qrencode"
 STATUS_FILE="/tmp/mqttreporter/status.json"
 PORT="${HTTPD_PORT:-8088}"
-QR_PNG="/tmp/mqttreporter-qr.png"
 
 # Read a flat JSON value by key — small enough to do with sed.
 _jread() {
@@ -65,36 +64,58 @@ fi
 
 URL="http://$ip:$PORT"
 
-# Render a single panel that combines the URL (in the title for hand-typing),
-# the daemon/broker status (message body), and the QR for phone scanning.
-# Earlier two-step approaches showed only the image panel because
-# message-only infoPanel screens get dismissed immediately on the Mini Plus.
-qr_arg=""
+# infoPanel renders --image and --message as mutually exclusive modes.
+# To show the help text alongside the QR code, ship a pre-rendered help
+# PNG plus a dynamic QR PNG and feed both to infoPanel via --images-json.
+# infoPanel cycles between the two pages with L/R; A advances; B exits.
+# Per-page `title` shows in the header — we put the URL on the QR page.
+PAGES_JSON="/tmp/mqttreporter-pages.json"
+HELP_PNG_SRC="$APP_DIR/img/help.png"
+HELP_PNG_DST="/tmp/mqttreporter-help.png"
+QR_PNG_REL_NAME="mqttreporter-qr.png"
+QR_PNG_TMP="/tmp/$QR_PNG_REL_NAME"
+
+# images-json resolves each "path" relative to its own dirname, so we
+# stage both PNGs in /tmp/ and reference them by basename.
+[ -r "$HELP_PNG_SRC" ] && cp "$HELP_PNG_SRC" "$HELP_PNG_DST" 2>/dev/null
+
+qr_ready=0
 if [ "$ip" != "(no wifi)" ] && [ -x "$QRENCODE" ]; then
-    if "$QRENCODE" -o "$QR_PNG" -s 7 -m 4 -l M "$URL" >/dev/null 2>&1; then
-        qr_arg="--image $QR_PNG"
+    if "$QRENCODE" -o "$QR_PNG_TMP" -s 8 -m 4 -l M "$URL" >/dev/null 2>&1; then
+        qr_ready=1
     fi
 fi
 
-msg="Status: $run_label   Broker: $broker_label
-Last publish: $last_label
+# Build JSON. If QR generation failed (no IP / qrencode error), only the
+# help page is shown.
+{
+    printf '{"images":['
+    sep=""
+    if [ -r "$HELP_PNG_DST" ]; then
+        printf '%s{"path":"mqttreporter-help.png","title":"MQTT Reporter — Press A for QR"}' "$sep"
+        sep=","
+    fi
+    if [ "$qr_ready" = "1" ]; then
+        printf '%s{"path":"%s","title":"%s"}' "$sep" "$QR_PNG_REL_NAME" "$URL"
+    fi
+    printf ']}'
+} > "$PAGES_JSON"
 
-Open the URL above on a phone or laptop on the same
-Wi-Fi network to configure the broker, toggle the
-daemon, and choose which entities are published.
-
-Or scan the QR with a phone camera. Press B to close."
-
-if [ -x "$INFO_PANEL" ]; then
-    # shellcheck disable=SC2086
+if [ -x "$INFO_PANEL" ] && [ -s "$PAGES_JSON" ]; then
     "$INFO_PANEL" \
-        --title "MQTT Reporter  ·  $URL" \
-        --message "$msg" \
-        $qr_arg \
+        --images-json "$PAGES_JSON" \
+        --show-theme-controls \
         --persistent \
         >/dev/null 2>&1 || true
+elif [ -x "$INFO_PANEL" ]; then
+    "$INFO_PANEL" \
+        --title "MQTT Reporter" \
+        --message "Open this URL to configure: $URL
+
+Daemon: $run_label   Broker: $broker_label
+Last publish: $last_label" \
+        --persistent >/dev/null 2>&1 || true
 else
-    printf '%s\n' "$URL"
-    printf '%s\n' "$msg"
-    sleep 6
+    printf 'MQTT Reporter — open %s\n' "$URL"
+    sleep 5
 fi
