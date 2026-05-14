@@ -1,13 +1,20 @@
 <div align="center">
 
 ```
-   ___ ___   ___   ___    .------.
-  |   v   | |   | |   |  /        \    M Q T T   R E P O R T E R
-  |       |_|   |_|   | /  .----.  \   ─────────────────────────
-  |_|_|_|_|_|_|_|_|_|_| (   |  ()|   )    OnionOS  ·  Miyoo Mini Plus
-                        \  '----'  /          ↓
-       Home Assistant    \        /     [battery] [vol] [ram] [cpu]
-       ─── MQTT ───        '------'           via MQTT Discovery
+                                                                  
+       ███╗   ███╗ ██╗ ██╗   ██╗  ██████╗   ██████╗               
+       ████╗ ████║ ██║ ╚██╗ ██╔╝ ██╔═══██╗ ██╔═══██╗              
+       ██╔████╔██║ ██║  ╚████╔╝  ██║   ██║ ██║   ██║              
+       ██║╚██╔╝██║ ██║   ╚██╔╝   ██║   ██║ ██║   ██║              
+       ██║ ╚═╝ ██║ ██║    ██║    ╚██████╔╝ ╚██████╔╝              
+       ╚═╝     ╚═╝ ╚═╝    ╚═╝     ╚═════╝   ╚═════╝               
+                  M Q T T   ·   R E P O R T E R                   
+       ──────────────────────────────────────────────────         
+       POSIX-shell daemon · OnionOS · Miyoo Mini Plus             
+       73 entities every 10s · MQTT Discovery → Home Assistant    
+                                                                  
+                handheld  ─►  broker  ─►  HA dashboard            
+                                                                  
 ```
 
 **`miyoo-mqtt-reporter`** — a tiny POSIX-shell plugin for [OnionOS](https://onionui.github.io/)
